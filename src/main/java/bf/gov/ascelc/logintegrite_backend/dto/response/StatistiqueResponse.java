@@ -1,0 +1,18 @@
+// dto/response/StatistiqueResponse.java
+package bf.gov.ascelc.logintegrite_backend.dto.response;
+
+import lombok.Builder;
+import lombok.Data;
+import java.util.Map;
+
+@Data
+@Builder
+public class StatistiqueResponse {
+
+    private long totalFichesActives;
+    private long fichesEnAttente;
+    private long fichesBrouillon;
+    private Map<String, Long> parStatutJudiciaire;
+    private Map<String, Long> parNatureInfraction;
+    private Map<String, Long> top5Entites;
+}
