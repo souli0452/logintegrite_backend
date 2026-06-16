@@ -2,16 +2,17 @@ package bf.gov.ascelc.logintegrite_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "journal_audit")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
-public class JournalAudit {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class JournalAudit extends AuditEntity {
 
     @Column(length = 100)
     private String utilisateurId;
@@ -28,7 +29,8 @@ public class JournalAudit {
     @Column(length = 100)
     private String ressourceType;
 
-    private Long ressourceId;
+    @Column(length = 36)
+    private String ressourceId;
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -37,6 +39,7 @@ public class JournalAudit {
     private String adresseIp;
 
     @Column(length = 20)
+    @Builder.Default
     private String statut = "SUCCES";
 
     @Column(nullable = false)
@@ -48,9 +51,14 @@ public class JournalAudit {
             horodatage = LocalDateTime.now();
     }
 
-    public enum ActionAudit {
-        CONNEXION, DECONNEXION, CREATION, MODIFICATION,
-        SUPPRESSION, CONSULTATION, EXPORT,
-        VALIDATION, REJET, ARCHIVAGE
+    // ── LA MÉTHODE FLUIDE SANS CONFLIT AVEC LOMBOK ──
+    // Au lieu de surcharger le Builder natif complexe de @SuperBuilder,
+    // on crée une méthode fluide directement dans l'entité ou on utilise
+    // simplement .username() qui est déjà généré automatiquement par Lombok !
+    // Si tu as absolument besoin du mot-clé 'identifiantUnique' dans ton code,
+    // cette méthode permet de faire la passerelle proprement :
+    public JournalAudit identifiantUnique(String identifiantUnique) {
+        this.username = identifiantUnique;
+        return this;
     }
 }

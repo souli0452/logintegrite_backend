@@ -2,19 +2,17 @@ package bf.gov.ascelc.logintegrite_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "sauvegardes")
 @Data
-@Builder
+@SuperBuilder // Basculé en SuperBuilder pour l'uniformisation globale
 @NoArgsConstructor
 @AllArgsConstructor
-public class Sauvegarde {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@EqualsAndHashCode(callSuper = true)
+public class Sauvegarde extends AuditEntity {
 
     @Column(name = "nom_fichier", nullable = false)
     private String nomFichier;

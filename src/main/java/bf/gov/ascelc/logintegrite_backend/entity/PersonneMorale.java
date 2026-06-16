@@ -5,12 +5,9 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 /**
- * Personne morale épinglée (entreprise, ONG, coopérative...).
- * Hérite de FicheMiseEnCause — partage la même table
- * via SINGLE_TABLE inheritance.
- *
- * L'IFU (Identifiant Fiscal Unique) est l'identifiant
- * métier — contrainte d'unicité via index partiel PostgreSQL.
+ * Personne morale épinglée (entreprise, ONG, société d'État...).
+ * Hérite en cascade de AuditEntity via FicheMiseEnCause.
+ * Tout est stocké dans la table unique "fiche_mise_en_cause".
  */
 @Entity
 @DiscriminatorValue("PERSONNE_MORALE")
@@ -21,34 +18,21 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 public class PersonneMorale extends FicheMiseEnCause {
 
-    /** Dénomination officielle de la structure */
-    @Column(nullable = true, length = 300)
+    @Column(name = "raison_sociale", length = 300)
     private String raisonSociale;
 
-    /** Sigle ou acronyme (ex: SONABEL, ONEA) */
-    @Column(length = 50)
+    @Column(name = "sigle", length = 50)
     private String sigle;
 
-    /**
-     * Identifiant Fiscal Unique — identifiant métier Burkina Faso.
-     * Unicité assurée par index partiel sur
-     * type_fiche = 'PERSONNE_MORALE'.
-     */
-    @Column(length = 50)
+    @Column(name = "ifu", length = 50)
     private String ifu;
 
-    /**
-     * Catégorie juridique de la structure.
-     * Valeurs : ENTREPRISE, ONG, ASSOCIATION, COOPERATIVE,
-     *           ETABLISSEMENT_PUBLIC, SOCIETE_ETAT, AUTRE
-     */
-    @Column(length = 50)
+    @Column(name = "type_structure", length = 50)
     private String typeStructure;
 
-    /** Dirigeant ou représentant légal au moment des faits */
-    @Column(length = 200)
+    @Column(name = "nom_responsable", length = 200)
     private String nomResponsable;
 
-    @Column(length = 200)
+    @Column(name = "fonction_responsable", length = 200)
     private String fonctionResponsable;
 }

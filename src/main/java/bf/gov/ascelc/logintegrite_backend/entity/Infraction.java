@@ -4,29 +4,27 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "infraction")
-@Data 
-@Builder 
-@NoArgsConstructor 
+@Getter
+@Setter
+@SuperBuilder // Changement important : SuperBuilder est obligatoire pour l'héritage avec Lombok
+@NoArgsConstructor
 @AllArgsConstructor
-public class Infraction {
+public class Infraction extends AuditEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "fiche_id", nullable = false)
-    @JsonIgnoreProperties("infractions") // Coupe la boucle infinie de sérialisation JSON globale
+    @JsonIgnoreProperties("infractions")
     private FicheMiseEnCause fiche;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private NatureInfraction nature;
+    @Column(name = "nature", nullable = false, length = 30)
+    private String nature;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "type_infraction_id")
@@ -36,24 +34,19 @@ public class Infraction {
     private String description;
 
     @NotNull
-    @Column(nullable = false)
+    @Column(name = "date_faits", nullable = false)
     private LocalDate dateFaits;
 
-    @Column(length = 200)
+    @Column(name = "lieu_faits", length = 200)
     private String lieuFaits;
 
     @Column(precision = 15, scale = 2)
     private BigDecimal montant;
 
     @Column(length = 10)
-    @Builder.Default // CORRECTION WARNING : Empêche Lombok de vider la valeur par défaut "XOF" lors du build
+    @Builder.Default
     private String devise = "XOF";
 
     @Column(columnDefinition = "TEXT")
     private String sources;
-
-    public enum NatureInfraction {
-        CORRUPTION, DETOURNEMENT, FRAUDE,
-        CONCUSSION, PRISE_ILLEGALE, FAVORITISME, AUTRE
-    }
 }

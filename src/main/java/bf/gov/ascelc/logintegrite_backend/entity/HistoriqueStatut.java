@@ -1,46 +1,45 @@
 package bf.gov.ascelc.logintegrite_backend.entity;
 
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause.StatutJudiciaire;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "historique_statut")
-@Data 
-@Builder 
-@NoArgsConstructor 
+@Getter
+@Setter
+@SuperBuilder
+@NoArgsConstructor
 @AllArgsConstructor
-public class HistoriqueStatut {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class HistoriqueStatut extends AuditEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "fiche_id", nullable = false)
-    @JsonIgnoreProperties("historiqueStatuts") // Évite la boucle sur l'historique
+    @JsonIgnoreProperties("historiqueStatuts")
     private FicheMiseEnCause fiche;
 
-    @Enumerated(EnumType.STRING)
-    private StatutJudiciaire ancienStatut;
+    // ── RECOUVREMENT DES ENUMS PAR DES STRINGS (DSI FLEXIBILITÉ) ──
+    @Column(name = "ancien_statut", length = 50)
+    private String ancientStatut;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private StatutJudiciaire nouveauStatut;
+    @Column(name = "nouveau_statut", nullable = false, length = 50)
+    private String nouveauStatut;
 
     @Column(columnDefinition = "TEXT")
     private String motif;
 
-    @Column(nullable = false)
-    private LocalDateTime dateChangement;
-
     private LocalDate dateJugement;
+
+    @Column(length = 200)
     private String juridiction;
+
+    @Column(length = 200)
     private String typePeine;
+
+    @Column(length = 100)
     private String dureePeine;
 
     @Column(precision = 15, scale = 2)
@@ -49,12 +48,6 @@ public class HistoriqueStatut {
     @Column(columnDefinition = "TEXT")
     private String motifRelaxe;
 
-    @Column(length = 100)
-    private String agentId;
-
-    @PrePersist
-    public void prePersist() {
-        if (dateChangement == null)
-            dateChangement = LocalDateTime.now();
-    }
+    // Note: 'agentId' et 'dateChangement' ont été retirés car ils correspondent
+    // exactement à 'createdById' et 'createdAt' hérités de AuditEntity.
 }

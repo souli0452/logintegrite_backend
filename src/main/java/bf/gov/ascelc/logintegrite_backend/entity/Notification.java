@@ -2,16 +2,16 @@ package bf.gov.ascelc.logintegrite_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "notification")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
-public class Notification {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@Getter
+@Setter
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Notification extends AuditEntity {
 
     @Column(nullable = false, length = 100)
     private String destinataireId;
@@ -22,14 +22,8 @@ public class Notification {
     @Column(columnDefinition = "TEXT")
     private String contenu;
 
-    private LocalDateTime dateEnvoi;
-
     @Builder.Default
     private Boolean lue = false;
 
-    @PrePersist
-    public void prePersist() {
-        if (dateEnvoi == null)
-            dateEnvoi = LocalDateTime.now();
-    }
+    // Note : 'dateEnvoi' est remplacé par 'createdAt' hérité.
 }

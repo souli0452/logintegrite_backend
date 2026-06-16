@@ -3,20 +3,20 @@ package bf.gov.ascelc.logintegrite_backend.entity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "piece_jointe")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
-public class PieceJointe {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@Getter
+@Setter
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PieceJointe extends AuditEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "fiche_id", nullable = false)
-    @JsonIgnoreProperties("piecesJointes") // Évite la boucle sur les pièces jointes
+    @JsonIgnoreProperties("piecesJointes")
     private FicheMiseEnCause fiche;
 
     @Column(nullable = false, length = 255)
@@ -30,14 +30,6 @@ public class PieceJointe {
     @Column(nullable = false, length = 500)
     private String urlStockage;
 
-    private LocalDateTime dateUpload;
-
-    @Column(length = 100)
-    private String uploadPar;
-
-    @PrePersist
-    public void prePersist() {
-        if (dateUpload == null)
-            dateUpload = LocalDateTime.now();
-    }
+    // Note : 'dateUpload' et 'uploadPar' sont avantageusement supprimés
+    // car ils sont déjà portés par 'createdAt' et 'createdById' de AuditEntity.
 }

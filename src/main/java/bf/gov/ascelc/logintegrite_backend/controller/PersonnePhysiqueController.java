@@ -1,82 +1,67 @@
 package bf.gov.ascelc.logintegrite_backend.controller;
 
-import bf.gov.ascelc.logintegrite_backend.dto.response.FicheMiseEnCauseResponse;
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause.StatutFiche;
-// import bf.gov.ascelc.logintegrite_backend.entity.JournalAudit.ActionAudit;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
-// import bf.gov.ascelc.logintegrite_backend.service.AuditService;
+import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.service.PersonnePhysiqueService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
-import org.springframework.http.*;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
-@RequestMapping("/api/fiches/personnes-physiques")
+@RequestMapping(ApiURLs.PERSONNES_PHYSIQUES) // "/api/fiches/personnes-physiques"
 @RequiredArgsConstructor
 public class PersonnePhysiqueController {
 
     private final PersonnePhysiqueService ppService;
-    // private final AuditService auditService; // Pour la prochaine itération
-
-    @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','VALIDATEUR','AGENT')")
-    public ResponseEntity<Page<FicheMiseEnCauseResponse>> lister(
-            @RequestParam(required = false) String statut,
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
-        
-        StatutFiche sf = statut != null ? StatutFiche.valueOf(statut.toUpperCase()) : null;
-        Page<PersonnePhysique> entities = ppService.lister(sf, PageRequest.of(page, size, Sort.by("dateModification").descending()));
-        
-        return ResponseEntity.ok(entities.map(FicheMiseEnCauseResponse::fromEntity));
-    }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','AGENT')")
-    public ResponseEntity<FicheMiseEnCauseResponse> creer(
-            @Valid @RequestBody PersonnePhysique pp,
-            @AuthenticationPrincipal Jwt jwt,
-            HttpServletRequest req) {
-        
-        PersonnePhysique saved = ppService.creer(pp);
-        // TODO: Intégrer l'audit invisible lors de la saisie
-        // auditService.log(jwt, ActionAudit.CREATION, "PersonnePhysique", saved.getId(), "Création PP : " + saved.getNom(), req.getRemoteAddr());
-            
-        return ResponseEntity.status(HttpStatus.CREATED).body(FicheMiseEnCauseResponse.fromEntity(saved));
+    public ResponseEntity<PersonnePhysique> creer(@RequestBody PersonnePhysique pp) {
+        return ResponseEntity.ok(ppService.creer(pp));
     }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','AGENT')")
-    public ResponseEntity<FicheMiseEnCauseResponse> modifier(
-            @PathVariable Long id,
-            @Valid @RequestBody PersonnePhysique pp,
-            @AuthenticationPrincipal Jwt jwt,
-            HttpServletRequest req) {
-        
-        PersonnePhysique updated = ppService.modifier(id, pp);
-        // TODO: Intégrer l'audit invisible lors de la modification
-        // auditService.log(jwt, ActionAudit.MODIFICATION, "PersonnePhysique", id, "Modification PP", req.getRemoteAddr());
-            
-        return ResponseEntity.ok(FicheMiseEnCauseResponse.fromEntity(updated));
+    @GetMapping(ApiURLs.FICHES_ID) // "/{id}"
+    public ResponseEntity<PersonnePhysique> consulter(@PathVariable UUID id) {
+        return ResponseEntity.ok((PersonnePhysique) ppService.consulter(id));
     }
 
-    @GetMapping("/recherche")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','VALIDATEUR','AGENT')")
-    public ResponseEntity<Page<FicheMiseEnCauseResponse>> recherche(
-            @RequestParam(required = false) String nom,
-            @RequestParam(required = false) Long entiteId,
-            @RequestParam(required = false) Long regionId,
-            @RequestParam(required = false) String statut,
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
-        
-        Page<PersonnePhysique> entities = ppService.rechercherPP(nom, entiteId, regionId, statut, PageRequest.of(page, size));
-        return ResponseEntity.ok(entities.map(FicheMiseEnCauseResponse::fromEntity));
+    @PutMapping(ApiURLs.FICHES_ID) // "/{id}"
+    public ResponseEntity<PersonnePhysique> modifier(@PathVariable UUID id, @RequestBody PersonnePhysique pp) {
+        return ResponseEntity.ok(ppService.modifier(id, pp));
+    }
+
+    @PutMapping(ApiURLs.FICHES_SOUMETTRE) // "/{id}/soumettre"
+    public ResponseEntity<FicheMiseEnCause> soumettre(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(ppService.soumettre(id, agentId));
+    }
+
+    @PutMapping(ApiURLs.FICHES_VALIDER) // "/{id}/valider"
+    public ResponseEntity<FicheMiseEnCause> valider(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(ppService.valider(id, validateurId));
+    }
+
+    @PutMapping(ApiURLs.FICHES_REJETER) // "/{id}/rejeter"
+    public ResponseEntity<FicheMiseEnCause> rejeter(
+            @PathVariable UUID id,
+            @RequestParam String motif,
+            @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(ppService.rejeter(id, motif, validateurId));
+    }
+
+    @DeleteMapping(ApiURLs.FICHES_ARCHIVER) // "/{id}/archiver"
+    public ResponseEntity<Void> archiver(@PathVariable UUID id) {
+        ppService.archiver(id);
+        return ResponseEntity.noContent().build();
     }
 }

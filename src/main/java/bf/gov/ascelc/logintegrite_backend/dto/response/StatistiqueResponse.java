@@ -1,4 +1,3 @@
-// dto/response/StatistiqueResponse.java
 package bf.gov.ascelc.logintegrite_backend.dto.response;
 
 import lombok.Builder;
@@ -9,7 +8,7 @@ import java.util.Map;
 @Builder
 public class StatistiqueResponse {
 
-    private long totalFichesActives;
+    private long totalFiches; // Aligné pour éviter le conflit avec .totalFiches(total)
     private long fichesEnAttente;
     private long fichesBrouillon;
     private Map<String, Long> parStatutJudiciaire;

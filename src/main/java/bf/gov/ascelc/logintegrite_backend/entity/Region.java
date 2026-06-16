@@ -2,15 +2,16 @@ package bf.gov.ascelc.logintegrite_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "region")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
-public class Region {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class Region extends AuditEntity {
 
     @Column(nullable = false, unique = true, length = 10)
     private String code;
@@ -18,6 +19,7 @@ public class Region {
     @Column(nullable = false, length = 100)
     private String nom;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean actif = true;
 }

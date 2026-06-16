@@ -1,4 +1,4 @@
-package bf.gov.ascelc.logintegrite_backend.config;
+package bf.gov.ascelc.logintegrite_backend.config.jpa;
 
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.context.SecurityContextHolder;

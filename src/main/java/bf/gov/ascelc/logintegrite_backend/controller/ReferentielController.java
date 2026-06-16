@@ -8,8 +8,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
+import static bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs.*;
+
 @RestController
-@RequestMapping("/api")
+@RequestMapping(REFERENTIEL) // Équivaut à "/api/referentiel"
 @RequiredArgsConstructor
 public class ReferentielController {
 
@@ -17,19 +19,19 @@ public class ReferentielController {
     private final EntiteOrganisationRepository entiteRepo;
     private final TypeInfractionRepository typeRepo;
 
-    @GetMapping("/regions")
+    @GetMapping(REFERENTIEL_REGIONS) // Équivaut à "/regions"
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Region>> regions() {
         return ResponseEntity.ok(regionRepo.findByActifTrue());
     }
 
-    @GetMapping("/entites")
+    @GetMapping(REFERENTIEL_ENTITES) // Équivaut à "/entites"
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<EntiteOrganisation>> entites() {
         return ResponseEntity.ok(entiteRepo.findByActifTrue());
     }
 
-    @GetMapping("/types-infraction")
+    @GetMapping(REFERENTIEL_TYPES_INFRACTION) // Équivaut à "/types-infraction"
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TypeInfraction>> types() {
         return ResponseEntity.ok(typeRepo.findAll());

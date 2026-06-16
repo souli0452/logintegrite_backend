@@ -2,15 +2,16 @@ package bf.gov.ascelc.logintegrite_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "type_infraction")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
-public class TypeInfraction {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class TypeInfraction extends AuditEntity {
 
     @Column(nullable = false, unique = true, length = 20)
     private String code;

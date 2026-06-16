@@ -1,4 +1,4 @@
-package bf.gov.ascelc.logintegrite_backend.config;
+package bf.gov.ascelc.logintegrite_backend.config.security;
 
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
