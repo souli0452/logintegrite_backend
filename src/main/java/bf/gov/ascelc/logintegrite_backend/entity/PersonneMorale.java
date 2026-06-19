@@ -1,5 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.entity;
 
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;

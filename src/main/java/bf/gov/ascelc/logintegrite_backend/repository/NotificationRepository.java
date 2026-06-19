@@ -1,29 +1,17 @@
 package bf.gov.ascelc.logintegrite_backend.repository;
 
 import bf.gov.ascelc.logintegrite_backend.entity.Notification;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface NotificationRepository extends JpaRepository<Notification, Long> {
+public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
-    // Utilisation du comptage SQL natif pour la pagination
-    @Query(value = "SELECT * FROM notification WHERE destinataire_id = :destinataireId ORDER BY date_envoi DESC",
-            countQuery = "SELECT count(*) FROM notification WHERE destinataire_id = :destinataireId",
-            nativeQuery = true)
-    Page<Notification> findByDestinataireIdOrderByDateEnvoiDesc(@Param("destinataireId") String destinataireId, Pageable pageable);
+    // Récupérer toutes les notifications d'un utilisateur triées par la plus récente
+    List<Notification> findByDestinataireIdOrderByCreatedAtDesc(String destinataireId);
 
-    @Query(value = "SELECT count(*) FROM notification WHERE destinataire_id = :destinataireId AND lue = false", nativeQuery = true)
-    long countByDestinataireIdAndLueFalse(@Param("destinataireId") String destinataireId);
-
-    @Transactional
-    @Modifying
-    @Query(value = "UPDATE notification SET lue = true WHERE destinataire_id = :destinataireId", nativeQuery = true)
-    void marquerToutesLues(@Param("destinataireId") String destinataireId);
+    // Utile pour afficher le badge de notifications non lues sur l'IHM
+    List<Notification> findByDestinataireIdAndLueFalseOrderByCreatedAtDesc(String destinataireId);
 }

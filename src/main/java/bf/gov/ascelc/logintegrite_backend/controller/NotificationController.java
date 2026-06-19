@@ -1,57 +1,58 @@
 package bf.gov.ascelc.logintegrite_backend.controller;
 
-import bf.gov.ascelc.logintegrite_backend.entity.Notification;
-import bf.gov.ascelc.logintegrite_backend.repository.NotificationRepository;
+import bf.gov.ascelc.logintegrite_backend.dto.request.NotificationRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.NotificationResponse;
 import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-import static bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs.*;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping(NOTIFICATIONS) // "/api/notifications"
+@RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
-    private final NotificationRepository notifRepo;
-    private final NotificationService notifService;
+    private final NotificationService service;
 
-    @GetMapping
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Page<Notification>> mesNotifications(
-            @AuthenticationPrincipal Jwt jwt,
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
-
-        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
-
-        return ResponseEntity.ok(
-                notifRepo.findByDestinataireIdOrderByDateEnvoiDesc(
-                        userId,
-                        PageRequest.of(page, size)));
+    @PostMapping
+    public ResponseEntity<NotificationResponse> create(@Valid @RequestBody NotificationRequest request) {
+        return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
     }
 
-    @GetMapping(NOTIFICATIONS_COUNT) // "/count-non-lues"
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Long> countNonLues(
-            @AuthenticationPrincipal Jwt jwt) {
-
+    @GetMapping("/me")
+    public ResponseEntity<List<NotificationResponse>> getMyNotifications(@AuthenticationPrincipal Jwt jwt) {
         String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        return ResponseEntity.ok(notifService.countNonLues(userId));
+        return ResponseEntity.ok(service.getMyNotifications(userId));
     }
 
-    @PutMapping(NOTIFICATIONS_MARQUER_LUES) // "/marquer-lues"
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> marquerLues(
-            @AuthenticationPrincipal Jwt jwt) {
-
+    @GetMapping("/me/unread")
+    public ResponseEntity<List<NotificationResponse>> getMyUnreadNotifications(@AuthenticationPrincipal Jwt jwt) {
         String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        notifService.marquerToutesLues(userId);
+        return ResponseEntity.ok(service.getMyUnreadNotifications(userId));
+    }
+
+    @PutMapping("/{id}/read")
+    public ResponseEntity<NotificationResponse> markAsRead(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.markAsRead(id));
+    }
+
+    @PutMapping("/read-all")
+    public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        service.markAllAsRead(userId);
         return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

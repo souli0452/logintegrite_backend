@@ -6,7 +6,7 @@ public final class ApiURLs {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    // Racines de l'API (Conforme à tes deux formats existants)
+    // Racines de l'API
     public static final String API_ROOT = "/api";
     public static final String API_V1_ROOT = "/api/v1";
 
@@ -35,7 +35,7 @@ public final class ApiURLs {
     public static final String NOTIFICATIONS_COUNT = "/count-non-lues";
     public static final String NOTIFICATIONS_MARQUER_LUES = "/marquer-lues";
 
-    // Rapports (Calé sur ton préfixe v1)
+    // Rapports
     public static final String RAPPORTS = API_V1_ROOT + "/rapports";
     public static final String RAPPORTS_PDF = "/pdf";
     public static final String RAPPORTS_EXCEL = "/excel";

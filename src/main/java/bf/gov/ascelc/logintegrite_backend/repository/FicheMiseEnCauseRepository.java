@@ -1,6 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.repository;
 
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

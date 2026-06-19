@@ -1,50 +1,78 @@
 package bf.gov.ascelc.logintegrite_backend.service.impl;
 
+import bf.gov.ascelc.logintegrite_backend.dto.request.NotificationRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.NotificationResponse;
 import bf.gov.ascelc.logintegrite_backend.entity.Notification;
+import bf.gov.ascelc.logintegrite_backend.exception.ResourceNotFoundException;
+import bf.gov.ascelc.logintegrite_backend.mapper.NotificationMapper;
 import bf.gov.ascelc.logintegrite_backend.repository.NotificationRepository;
 import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class NotificationServiceImpl implements NotificationService {
 
-    private final NotificationRepository notifRepo;
+    private final NotificationRepository repository;
+    private final NotificationMapper mapper;
 
     @Override
-    public void envoyer(String destinataireId, String type, String contenu) {
-        notifRepo.save(Notification.builder()
-                .destinataireId(destinataireId)
-                .type(type)
-                .contenu(contenu)
-                .lue(false)
-                .build());
+    public NotificationResponse create(NotificationRequest request) {
+        Notification entity = mapper.toEntity(request);
+        return mapper.toResponse(repository.save(entity));
     }
 
     @Override
-    public void notifierValidateur(String validateurId, String nomFiche) {
-        envoyer(validateurId, "VALIDATION_REQUISE",
-                "Une fiche nécessite votre validation : " + nomFiche);
+    @Transactional(readOnly = true)
+    public NotificationResponse getById(UUID id) {
+        return repository.findById(id)
+                .map(mapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification non trouvée avec l'id : " + id));
     }
 
     @Override
-    public void notifierAgent(String agentId, String nomFiche, boolean validee, String motif) {
-        String message = validee
-                ? "Votre fiche a été validée : " + nomFiche
-                : "Votre fiche a été rejetée : " + nomFiche + " — Motif : " + motif;
-        envoyer(agentId, validee ? "FICHE_VALIDEE" : "FICHE_REJETEE", message);
+    @Transactional(readOnly = true)
+    public List<NotificationResponse> getMyNotifications(String destinataireId) {
+        return repository.findByDestinataireIdOrderByCreatedAtDesc(destinataireId).stream()
+                .map(mapper::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public long countNonLues(String utilisateurId) {
-        return notifRepo.countByDestinataireIdAndLueFalse(utilisateurId);
+    @Transactional(readOnly = true)
+    public List<NotificationResponse> getMyUnreadNotifications(String destinataireId) {
+        return repository.findByDestinataireIdAndLueFalseOrderByCreatedAtDesc(destinataireId).stream()
+                .map(mapper::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
-    @Transactional
-    public void marquerToutesLues(String utilisateurId) {
-        notifRepo.marquerToutesLues(utilisateurId);
+    public NotificationResponse markAsRead(UUID id) {
+        Notification entity = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification non trouvée avec l'id : " + id));
+        entity.setLue(true);
+        return mapper.toResponse(repository.save(entity));
+    }
+
+    @Override
+    public void markAllAsRead(String destinataireId) {
+        List<Notification> unread = repository.findByDestinataireIdAndLueFalseOrderByCreatedAtDesc(destinataireId);
+        unread.forEach(notification -> notification.setLue(true));
+        repository.saveAll(unread);
+    }
+
+    @Override
+    public void delete(UUID id) {
+        if (!repository.existsById(id)) {
+            throw new ResourceNotFoundException("Notification non trouvée avec l'id : " + id);
+        }
+        repository.deleteById(id);
     }
 }

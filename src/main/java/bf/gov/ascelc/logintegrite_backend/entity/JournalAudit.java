@@ -1,5 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.entity;
 
+import bf.gov.ascelc.logintegrite_backend.abstracts.AuditEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -51,12 +52,7 @@ public class JournalAudit extends AuditEntity {
             horodatage = LocalDateTime.now();
     }
 
-    // ── LA MÉTHODE FLUIDE SANS CONFLIT AVEC LOMBOK ──
-    // Au lieu de surcharger le Builder natif complexe de @SuperBuilder,
-    // on crée une méthode fluide directement dans l'entité ou on utilise
-    // simplement .username() qui est déjà généré automatiquement par Lombok !
-    // Si tu as absolument besoin du mot-clé 'identifiantUnique' dans ton code,
-    // cette méthode permet de faire la passerelle proprement :
+
     public JournalAudit identifiantUnique(String identifiantUnique) {
         this.username = identifiantUnique;
         return this;

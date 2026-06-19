@@ -1,5 +1,7 @@
 package bf.gov.ascelc.logintegrite_backend.entity;
 
+import bf.gov.ascelc.logintegrite_backend.abstracts.AuditEntity;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;

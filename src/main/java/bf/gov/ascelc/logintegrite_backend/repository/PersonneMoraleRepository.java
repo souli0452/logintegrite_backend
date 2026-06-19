@@ -13,18 +13,19 @@ import java.util.UUID;
 @Repository
 public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, UUID> {
 
-    // Remplacement de StatutFiche par String
     Page<PersonneMorale> findByStatutFiche(String statutFiche, Pageable pageable);
 
     @Query("SELECT pm FROM PersonneMorale pm WHERE " +
             "(:raisonSociale IS NULL OR LOWER(pm.raisonSociale) LIKE LOWER(CONCAT('%', :raisonSociale, '%'))) AND " +
             "(:entiteId IS NULL OR pm.entite.id = :entiteId) AND " +
             "(:regionId IS NULL OR pm.region.id = :regionId) AND " +
-            "(:typeStructure IS NULL OR pm.typeStructure = :typeStructure)")
+            "(:typeStructure IS NULL OR pm.typeStructure = :typeStructure) AND " +
+            "(:statut IS NULL OR pm.statutFiche = :statut)") // Alignement parfait avec PersonnePhysique
     Page<PersonneMorale> rechercheAvancee(
             @Param("raisonSociale") String raisonSociale,
             @Param("entiteId") UUID entiteId,
             @Param("regionId") UUID regionId,
             @Param("typeStructure") String typeStructure,
+            @Param("statut") String statut, // Ajout du paramètre statut
             Pageable pageable);
 }

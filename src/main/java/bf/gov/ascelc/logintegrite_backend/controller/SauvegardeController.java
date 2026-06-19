@@ -1,34 +1,49 @@
 package bf.gov.ascelc.logintegrite_backend.controller;
 
-import bf.gov.ascelc.logintegrite_backend.entity.Sauvegarde;
-import bf.gov.ascelc.logintegrite_backend.repository.SauvegardeRepository;
+import bf.gov.ascelc.logintegrite_backend.dto.request.SauvegardeRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.SauvegardeResponse;
+import bf.gov.ascelc.logintegrite_backend.service.SauvegardeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
-// On utilise une route cohérente avec ton API_ROOT ("/api/sauvegardes")
 @RequestMapping("/api/sauvegardes")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMINISTRATEUR')") // Sécurité globale au niveau de la classe
+@PreAuthorize("hasRole('ADMINISTRATEUR')")
 public class SauvegardeController {
 
-    private final SauvegardeRepository sauvegardeRepo;
+    private final SauvegardeService service;
+
+    @PostMapping("/debut")
+    public ResponseEntity<SauvegardeResponse> registrarDebut(@Valid @RequestBody SauvegardeRequest request) {
+        return new ResponseEntity<>(service.registrarDebut(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}/fin")
+    public ResponseEntity<SauvegardeResponse> registrarFin(
+            @PathVariable UUID id,
+            @RequestParam String statut,
+            @RequestParam(required = false) LocalDateTime dateFin) {
+
+        LocalDateTime heureFin = (dateFin != null) ? dateFin : LocalDateTime.now();
+        return ResponseEntity.ok(service.registrarFin(id, statut, heureFin));
+    }
 
     @GetMapping
-    public ResponseEntity<List<Sauvegarde>> listerToutes() {
-        // Retourne l'historique des sauvegardes triées de la plus récente à la plus ancienne
-        return ResponseEntity.ok(sauvegardeRepo.findAllByOrderByDateDebutDesc());
+    public ResponseEntity<List<SauvegardeResponse>> getHistorique() {
+        return ResponseEntity.ok(service.getHistorique());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Sauvegarde> consulter(@PathVariable UUID id) {
-        return sauvegardeRepo.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<SauvegardeResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getById(id));
     }
 }

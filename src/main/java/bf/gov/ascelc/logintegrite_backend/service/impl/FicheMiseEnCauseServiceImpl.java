@@ -1,6 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.service.impl;
 
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
 import bf.gov.ascelc.logintegrite_backend.repository.FicheMiseEnCauseRepository;
 import bf.gov.ascelc.logintegrite_backend.service.FicheMiseEnCauseService;

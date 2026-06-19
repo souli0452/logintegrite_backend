@@ -1,7 +1,7 @@
 package bf.gov.ascelc.logintegrite_backend.service;
 
 import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import java.util.UUID;
 
 public interface FicheMiseEnCauseService {

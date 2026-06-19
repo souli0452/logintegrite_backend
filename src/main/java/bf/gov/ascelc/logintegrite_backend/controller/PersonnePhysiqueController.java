@@ -1,65 +1,84 @@
 package bf.gov.ascelc.logintegrite_backend.controller;
 
+import bf.gov.ascelc.logintegrite_backend.dto.request.PersonnePhysiqueRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.PersonnePhysiqueResponse;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.service.PersonnePhysiqueService;
+import bf.gov.ascelc.logintegrite_backend.mapper.PersonnePhysiqueMapper;
 import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping(ApiURLs.PERSONNES_PHYSIQUES) // "/api/fiches/personnes-physiques"
+@RequestMapping(ApiURLs.PERSONNES_PHYSIQUES)
 @RequiredArgsConstructor
 public class PersonnePhysiqueController {
 
     private final PersonnePhysiqueService ppService;
+    private final PersonnePhysiqueMapper ppMapper;
 
     @PostMapping
-    public ResponseEntity<PersonnePhysique> creer(@RequestBody PersonnePhysique pp) {
-        return ResponseEntity.ok(ppService.creer(pp));
+    public ResponseEntity<PersonnePhysiqueResponse> creer(@Valid @RequestBody PersonnePhysiqueRequest request) {
+        PersonnePhysique pp = ppMapper.toEntity(request);
+        PersonnePhysique nouvelle = ppService.creer(pp);
+        return ResponseEntity.ok(ppMapper.toResponse(nouvelle));
     }
 
-    @GetMapping(ApiURLs.FICHES_ID) // "/{id}"
-    public ResponseEntity<PersonnePhysique> consulter(@PathVariable UUID id) {
-        return ResponseEntity.ok((PersonnePhysique) ppService.consulter(id));
+    @GetMapping(ApiURLs.PERSONNES_PHYSIQUES_RECHERCHE)
+    public ResponseEntity<List<PersonnePhysiqueResponse>> lister() {
+        List<PersonnePhysiqueResponse> responses = ppService.listerTout().stream()
+                .map(ppMapper::toResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 
-    @PutMapping(ApiURLs.FICHES_ID) // "/{id}"
-    public ResponseEntity<PersonnePhysique> modifier(@PathVariable UUID id, @RequestBody PersonnePhysique pp) {
-        return ResponseEntity.ok(ppService.modifier(id, pp));
+    @GetMapping(ApiURLs.FICHES_ID)
+    public ResponseEntity<PersonnePhysiqueResponse> consulter(@PathVariable UUID id) {
+        PersonnePhysique pp = ppService.consulter(id);
+        return ResponseEntity.ok(ppMapper.toResponse(pp));
     }
 
-    @PutMapping(ApiURLs.FICHES_SOUMETTRE) // "/{id}/soumettre"
-    public ResponseEntity<FicheMiseEnCause> soumettre(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal Jwt jwt) {
+    @PutMapping(ApiURLs.FICHES_ID)
+    public ResponseEntity<PersonnePhysiqueResponse> modifier(@PathVariable UUID id, @Valid @RequestBody PersonnePhysiqueRequest request) {
+        PersonnePhysique ppExistante = ppService.consulter(id);
+        ppMapper.updateEntityFromRequest(request, ppExistante);
+        PersonnePhysique modifiee = ppService.modifier(id, ppExistante);
+        return ResponseEntity.ok(ppMapper.toResponse(modifiee));
+    }
+
+    @PutMapping(ApiURLs.FICHES_SOUMETTRE)
+    public ResponseEntity<PersonnePhysiqueResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        return ResponseEntity.ok(ppService.soumettre(id, agentId));
+        PersonnePhysique pp = (PersonnePhysique) ppService.soumettre(id, agentId);
+        return ResponseEntity.ok(ppMapper.toResponse(pp));
     }
 
-    @PutMapping(ApiURLs.FICHES_VALIDER) // "/{id}/valider"
-    public ResponseEntity<FicheMiseEnCause> valider(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal Jwt jwt) {
+    @PutMapping(ApiURLs.FICHES_VALIDER)
+    public ResponseEntity<PersonnePhysiqueResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        return ResponseEntity.ok(ppService.valider(id, validateurId));
+        PersonnePhysique pp = (PersonnePhysique) ppService.valider(id, validateurId);
+        return ResponseEntity.ok(ppMapper.toResponse(pp));
     }
 
-    @PutMapping(ApiURLs.FICHES_REJETER) // "/{id}/rejeter"
-    public ResponseEntity<FicheMiseEnCause> rejeter(
+    @PutMapping(ApiURLs.FICHES_REJETER)
+    public ResponseEntity<PersonnePhysiqueResponse> rejeter(
             @PathVariable UUID id,
             @RequestParam String motif,
             @AuthenticationPrincipal Jwt jwt) {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        return ResponseEntity.ok(ppService.rejeter(id, motif, validateurId));
+        PersonnePhysique pp = (PersonnePhysique) ppService.rejeter(id, motif, validateurId);
+        return ResponseEntity.ok(ppMapper.toResponse(pp));
     }
 
-    @DeleteMapping(ApiURLs.FICHES_ARCHIVER) // "/{id}/archiver"
+    @DeleteMapping(ApiURLs.FICHES_ARCHIVER)
     public ResponseEntity<Void> archiver(@PathVariable UUID id) {
         ppService.archiver(id);
         return ResponseEntity.noContent().build();

@@ -1,5 +1,7 @@
 package bf.gov.ascelc.logintegrite_backend.entity;
 
+import bf.gov.ascelc.logintegrite_backend.abstracts.AuditEntity;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
@@ -30,6 +32,5 @@ public class PieceJointe extends AuditEntity {
     @Column(nullable = false, length = 500)
     private String urlStockage;
 
-    // Note : 'dateUpload' et 'uploadPar' sont avantageusement supprimés
-    // car ils sont déjà portés par 'createdAt' et 'createdById' de AuditEntity.
+
 }

@@ -1,4 +1,4 @@
-package bf.gov.ascelc.logintegrite_backend.config.jpa;
+package bf.gov.ascelc.logintegrite_backend.config.security;
 
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -7,11 +7,7 @@ import org.springframework.security.oauth2.server.resource.authentication
 import org.springframework.stereotype.Component;
 import java.util.Optional;
 
-/**
- * Fournit automatiquement l'ID Keycloak de l'agent connecté
- * aux annotations @CreatedBy et @LastModifiedBy de JPA Auditing.
- * Plus besoin de setter manuellement createurId dans les services.
- */
+
 @Component("keycloakAuditorAware")
 public class KeycloakAuditorAware implements AuditorAware<String> {
 

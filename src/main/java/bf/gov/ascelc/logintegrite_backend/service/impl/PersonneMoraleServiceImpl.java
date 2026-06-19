@@ -1,6 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.service.impl;
 
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonneMorale;
 import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
 import bf.gov.ascelc.logintegrite_backend.repository.PersonneMoraleRepository;
@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -38,6 +39,12 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
         existant.setRegion(pm.getRegion());
 
         return pmRepo.save(existant);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonneMorale> listerTout() {
+        return pmRepo.findAll();
     }
 
     @Override
@@ -83,7 +90,6 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
     @Transactional
     public FicheMiseEnCause modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId) {
         PersonneMorale f = consulter(id);
-        // Correction ici pour correspondre au getter du DTO révisé
         f.setStatutJudiciaire(request.getStatutJudiciaire());
         return pmRepo.save(f);
     }

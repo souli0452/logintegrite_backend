@@ -1,4 +1,4 @@
-package bf.gov.ascelc.logintegrite_backend.entity;
+package bf.gov.ascelc.logintegrite_backend.abstracts;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;

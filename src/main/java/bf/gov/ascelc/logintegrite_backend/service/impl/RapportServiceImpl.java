@@ -1,6 +1,7 @@
 package bf.gov.ascelc.logintegrite_backend.service.impl;
 
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.dto.response.FicheExportResponse;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonneMorale;
 import bf.gov.ascelc.logintegrite_backend.repository.FicheMiseEnCauseRepository;
@@ -22,6 +23,7 @@ import java.io.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +33,7 @@ public class RapportServiceImpl implements RapportService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] genererPDF(String titre, List<FicheMiseEnCause> fiches) throws IOException {
+    public byte[] genererPDF(String titre, List<FicheExportResponse> fiches) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PdfWriter writer = new PdfWriter(out);
         PdfDocument pdf  = new PdfDocument(writer);
@@ -63,19 +65,10 @@ public class RapportServiceImpl implements RapportService {
             table.addHeaderCell(cell);
         }
 
-        for (FicheMiseEnCause f : fiches) {
+        for (FicheExportResponse f : fiches) {
             table.addCell(f.getId() != null ? f.getId().toString() : "");
-
-            if (f instanceof PersonnePhysique pp) {
-                String nomComplet = (pp.getNom() != null ? pp.getNom() : "") + " " + (pp.getPrenoms() != null ? pp.getPrenoms() : "");
-                table.addCell(nomComplet.trim().isEmpty() ? "Physique Anonyme" : nomComplet.trim());
-            } else if (f instanceof PersonneMorale pm) {
-                table.addCell(pm.getRaisonSociale() != null ? pm.getRaisonSociale() : "Morale Sans Nom");
-            } else {
-                table.addCell("Cible indéterminée");
-            }
-
-            table.addCell(f.getEntite() != null ? f.getEntite().getNom() : "-");
+            table.addCell(f.getCibleNom() != null ? f.getCibleNom() : "");
+            table.addCell(f.getStructureAssociee() != null ? f.getStructureAssociee() : "-");
             table.addCell(f.getStatutJudiciaire() != null ? f.getStatutJudiciaire() : "-");
         }
 
@@ -86,7 +79,7 @@ public class RapportServiceImpl implements RapportService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] genererExcel(String titre, List<FicheMiseEnCause> fiches) throws IOException {
+    public byte[] genererExcel(String titre, List<FicheExportResponse> fiches) throws IOException {
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Log Intégrité");
 
@@ -97,7 +90,7 @@ public class RapportServiceImpl implements RapportService {
         headerStyle.setFillForegroundColor(IndexedColors.GREEN.getIndex());
         headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-        String[] cols = {"ID", "Type Cible", "Nom / Raison Sociale", "Prénoms / Sigle", "Identifiant Unique (Matricule/IFU)", "Entité", "Région", "Nature infraction", "Statut judiciaire", "Statut fiche"};
+        String[] cols = {"ID", "Type Cible", "Nom / Raison Sociale", "Identifiant Unique (Matricule/IFU)", "Entité", "Région", "Statut judiciaire", "Statut fiche"};
         Row headerRow = sheet.createRow(0);
         for (int i = 0; i < cols.length; i++) {
             org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
@@ -106,40 +99,18 @@ public class RapportServiceImpl implements RapportService {
         }
 
         int rowNum = 1;
-        for (FicheMiseEnCause f : fiches) {
+
+        for (FicheExportResponse f : fiches) {
             Row row = sheet.createRow(rowNum++);
 
-            // CORRECTION : Conversion de l'UUID en String pour la cellule Excel
             row.createCell(0).setCellValue(f.getId() != null ? f.getId().toString() : "");
-
-            if (f instanceof PersonnePhysique pp) {
-                row.createCell(1).setCellValue("PERSONNE PHYSIQUE");
-                row.createCell(2).setCellValue(pp.getNom() != null ? pp.getNom() : "");
-                row.createCell(3).setCellValue(pp.getPrenoms() != null ? pp.getPrenoms() : "");
-                row.createCell(4).setCellValue(pp.getMatricule() != null ? pp.getMatricule() : "");
-            } else if (f instanceof PersonneMorale pm) {
-                row.createCell(1).setCellValue("PERSONNE MORALE");
-                row.createCell(2).setCellValue(pm.getRaisonSociale() != null ? pm.getRaisonSociale() : "");
-                row.createCell(3).setCellValue(pm.getSigle() != null ? pm.getSigle() : "");
-                row.createCell(4).setCellValue(pm.getIfu() != null ? pm.getIfu() : "");
-            } else {
-                row.createCell(1).setCellValue("INCONNU");
-                row.createCell(2).setCellValue("");
-                row.createCell(3).setCellValue("");
-                row.createCell(4).setCellValue("");
-            }
-
-            row.createCell(5).setCellValue(f.getEntite() != null ? f.getEntite().getNom() : "");
-            row.createCell(6).setCellValue(f.getRegion() != null ? f.getRegion().getNom() : "");
-
-            row.createCell(7).setCellValue(
-                    f.getInfractions() != null && !f.getInfractions().isEmpty() && f.getInfractions().get(0).getNature() != null
-                            ? f.getInfractions().get(0).getNature()
-                            : ""
-            );
-
-            row.createCell(8).setCellValue(f.getStatutJudiciaire() != null ? f.getStatutJudiciaire() : "");
-            row.createCell(9).setCellValue(f.getStatutFiche() != null ? f.getStatutFiche() : "");
+            row.createCell(1).setCellValue(f.getTypeFiche() != null ? f.getTypeFiche() : "");
+            row.createCell(2).setCellValue(f.getCibleNom() != null ? f.getCibleNom() : "");
+            row.createCell(3).setCellValue(f.getIdentifiantUnique() != null ? f.getIdentifiantUnique() : "");
+            row.createCell(4).setCellValue(f.getStructureAssociee() != null ? f.getStructureAssociee() : "");
+            row.createCell(5).setCellValue(f.getRegion() != null ? f.getRegion() : "");
+            row.createCell(6).setCellValue(f.getStatutJudiciaire() != null ? f.getStatutJudiciaire() : "");
+            row.createCell(7).setCellValue(f.getStatutFiche() != null ? f.getStatutFiche() : "");
         }
 
         for (int i = 0; i < cols.length; i++) {
@@ -153,9 +124,40 @@ public class RapportServiceImpl implements RapportService {
     }
 
     @Override
-    public List<FicheMiseEnCause> getFichesActives() {
+    @Transactional(readOnly = true)
+    public List<FicheExportResponse> getFichesActivesPourExport() {
+
         return ficheRepo.findAll().stream()
                 .filter(f -> "ACTIVE".equals(f.getStatutFiche()))
-                .toList();
+                .map(fiche -> {
+                    String cibleNom = "Inconnu";
+                    String identifiant = "N/A";
+                    String type = "AUTRE";
+
+                    if (fiche instanceof PersonnePhysique pp) {
+                        type = "PHYSIQUE";
+                        String nomComplet = (pp.getNom() != null ? pp.getNom() : "") + " " + (pp.getPrenoms() != null ? pp.getPrenoms() : "");
+                        cibleNom = nomComplet.trim().isEmpty() ? "Physique Anonyme" : nomComplet.trim();
+                        identifiant = pp.getMatricule() != null ? pp.getMatricule() : "N/A";
+                    } else if (fiche instanceof PersonneMorale pm) {
+                        type = "MORALE";
+                        cibleNom = pm.getRaisonSociale() != null ? pm.getRaisonSociale() : "Morale Sans Nom";
+                        identifiant = pm.getIfu() != null ? pm.getIfu() : "N/A";
+                    }
+
+                    return FicheExportResponse.builder()
+                            .id(fiche.getId())
+                            .typeFiche(type)
+                            .cibleNom(cibleNom)
+                            .identifiantUnique(identifiant)
+                            .structureAssociee(fiche.getEntite() != null ? fiche.getEntite().getNom() : "N/A")
+                            .region(fiche.getRegion() != null ? fiche.getRegion().getNom() : "N/A")
+                            .statutFiche(fiche.getStatutFiche())
+                            .statutJudiciaire(fiche.getStatutJudiciaire())
+                            .nbInfractions(fiche.getInfractions() != null ? fiche.getInfractions().size() : 0)
+                            .createdAt(fiche.getCreatedAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 }

@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableJpaAuditing(auditorAwareRef = "keycloakAuditorAware") // ← modifié
+@EnableJpaAuditing(auditorAwareRef = "keycloakAuditorAware")
 @EnableScheduling
 public class LogintegriteBackendApplication {
     public static void main(String[] args) {

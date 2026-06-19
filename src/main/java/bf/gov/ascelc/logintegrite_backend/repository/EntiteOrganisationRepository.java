@@ -8,6 +8,6 @@ import java.util.UUID;
 
 @Repository
 public interface EntiteOrganisationRepository
-        extends JpaRepository<EntiteOrganisation, UUID> { // Changé de Long à UUID
+        extends JpaRepository<EntiteOrganisation, UUID> {
     List<EntiteOrganisation> findByActifTrue();
 }

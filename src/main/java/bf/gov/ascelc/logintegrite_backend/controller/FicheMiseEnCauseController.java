@@ -1,6 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.controller;
 
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.FicheMiseEnCauseResponse;
 import bf.gov.ascelc.logintegrite_backend.service.FicheMiseEnCauseService;
@@ -15,13 +15,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping(ApiURLs.FICHES)
+@RequestMapping(ApiURLs.FICHES) // "/api/fiches"
 public class FicheMiseEnCauseController {
 
     private final FicheMiseEnCauseService ficheService;
     private final FicheMiseEnCauseMapper ficheMapper;
 
-    // Remplacement de Lombok par un constructeur explicite avec le @Qualifier requis
+
     public FicheMiseEnCauseController(
             @Qualifier("ficheMiseEnCauseServiceImpl") FicheMiseEnCauseService ficheService,
             FicheMiseEnCauseMapper ficheMapper) {
@@ -29,13 +29,13 @@ public class FicheMiseEnCauseController {
         this.ficheMapper = ficheMapper;
     }
 
-    @GetMapping(ApiURLs.FICHES_ID)
+    @GetMapping(ApiURLs.FICHES_ID) // "/{id}"
     public ResponseEntity<FicheMiseEnCauseResponse> consulter(@PathVariable UUID id) {
         FicheMiseEnCause fiche = ficheService.consulter(id);
         return ResponseEntity.ok(ficheMapper.toResponse(fiche));
     }
 
-    @PutMapping(ApiURLs.FICHES_SOUMETTRE)
+    @PutMapping(ApiURLs.FICHES_SOUMETTRE) // "/{id}/soumettre"
     public ResponseEntity<FicheMiseEnCauseResponse> soumettre(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
@@ -44,7 +44,7 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(ficheMapper.toResponse(fiche));
     }
 
-    @PutMapping(ApiURLs.FICHES_VALIDER)
+    @PutMapping(ApiURLs.FICHES_VALIDER) // "/{id}/valider"
     public ResponseEntity<FicheMiseEnCauseResponse> valider(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
@@ -53,7 +53,7 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(ficheMapper.toResponse(fiche));
     }
 
-    @PutMapping(ApiURLs.FICHES_REJETER)
+    @PutMapping(ApiURLs.FICHES_REJETER) // "/{id}/rejeter"
     public ResponseEntity<FicheMiseEnCauseResponse> rejeter(
             @PathVariable UUID id,
             @RequestParam String motif,
@@ -63,13 +63,13 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(ficheMapper.toResponse(fiche));
     }
 
-    @DeleteMapping(ApiURLs.FICHES_ARCHIVER)
+    @DeleteMapping(ApiURLs.FICHES_ARCHIVER) // "/{id}/archiver"
     public ResponseEntity<Void> archiver(@PathVariable UUID id) {
         ficheService.archiver(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping(ApiURLs.FICHES_STATUT_JUDICIAIRE)
+    @PutMapping(ApiURLs.FICHES_STATUT_JUDICIAIRE) // "/{id}/statut-judiciaire"
     public ResponseEntity<FicheMiseEnCauseResponse> modifierStatutJudiciaire(
             @PathVariable UUID id,
             @RequestBody StatutJudiciaireRequest request,

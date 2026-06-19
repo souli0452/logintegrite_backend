@@ -1,6 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.service.impl;
 
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
 import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
 import bf.gov.ascelc.logintegrite_backend.repository.PersonnePhysiqueRepository;
@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -83,15 +84,21 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
     @Transactional
     public FicheMiseEnCause modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId) {
         PersonnePhysique f = consulter(id);
-        // Modification effectuée ici pour utiliser le bon getter
         f.setStatutJudiciaire(request.getStatutJudiciaire());
         return ppRepo.save(f);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public long countEnAttente() {
         return ppRepo.findAll().stream()
                 .filter(f -> "EN_ATTENTE_VALIDATION".equals(f.getStatutFiche()))
                 .count();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonnePhysique> listerTout() {
+        return ppRepo.findAll();
     }
 }

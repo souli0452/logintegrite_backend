@@ -1,5 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.entity;
 
+import bf.gov.ascelc.logintegrite_backend.abstracts.AuditEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -19,5 +20,4 @@ public class RechercheSauvegardee extends AuditEntity {
     @Column(columnDefinition = "jsonb", nullable = false)
     private String criteres;
 
-    // Note : 'utilisateurId' devient 'createdById' et 'dateCreation' devient 'createdAt'.
 }

@@ -1,7 +1,7 @@
 package bf.gov.ascelc.logintegrite_backend.mapper;
 
 import bf.gov.ascelc.logintegrite_backend.dto.response.FicheMiseEnCauseResponse;
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonneMorale;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
 import org.mapstruct.*;

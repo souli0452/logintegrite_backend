@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface SauvegardeRepository
-        extends JpaRepository<Sauvegarde, UUID> { // Changé de Long à UUID
+public interface SauvegardeRepository extends JpaRepository<Sauvegarde, UUID> {
 
+    // Permet à l'administrateur de lister l'historique du plus récent au plus ancien
     List<Sauvegarde> findAllByOrderByDateDebutDesc();
 }

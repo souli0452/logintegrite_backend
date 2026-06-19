@@ -1,6 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.controller;
 
-import bf.gov.ascelc.logintegrite_backend.entity.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.dto.response.FicheExportResponse;
 import bf.gov.ascelc.logintegrite_backend.service.RapportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -17,14 +17,15 @@ import static bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs.*;
 @RestController
 @RequestMapping(RAPPORTS) // "/api/v1/rapports"
 @RequiredArgsConstructor
-@PreAuthorize("isAuthenticated()") // Sécurisation obligatoire de l'export des fiches d'investigation
+@PreAuthorize("isAuthenticated()")
 public class RapportController {
 
     private final RapportService rapportService;
 
     @GetMapping(RAPPORTS_PDF) // "/pdf"
     public ResponseEntity<byte[]> exporterPDF(@RequestParam(defaultValue = "Rapport des Mises en Cause") String titre) throws IOException {
-        List<FicheMiseEnCause> fiches = rapportService.getFichesActives();
+        // On récupère une liste de DTOs propres construits par le service
+        List<FicheExportResponse> fiches = rapportService.getFichesActivesPourExport();
         byte[] pdfContenu = rapportService.genererPDF(titre, fiches);
 
         return ResponseEntity.ok()
@@ -35,7 +36,7 @@ public class RapportController {
 
     @GetMapping(RAPPORTS_EXCEL) // "/excel"
     public ResponseEntity<byte[]> exporterExcel(@RequestParam(defaultValue = "Export Log Intégrité") String titre) throws IOException {
-        List<FicheMiseEnCause> fiches = rapportService.getFichesActives();
+        List<FicheExportResponse> fiches = rapportService.getFichesActivesPourExport();
         byte[] excelContenu = rapportService.genererExcel(titre, fiches);
 
         return ResponseEntity.ok()

@@ -1,5 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.controller;
 
+import bf.gov.ascelc.logintegrite_backend.dto.request.StatistiqueRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.StatistiqueResponse;
 import bf.gov.ascelc.logintegrite_backend.service.StatistiqueService;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,8 @@ public class StatistiqueController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMINISTRATEUR','VALIDATEUR','AGENT')")
-    public ResponseEntity<StatistiqueResponse> tableauDeBord() {
-        return ResponseEntity.ok(statistiqueService.calculer());
+    public ResponseEntity<StatistiqueResponse> tableauDeBord(StatistiqueRequest filtres) {
+        // On passe l'objet de requête contenant les filtres optionnels au service
+        return ResponseEntity.ok(statistiqueService.calculer(filtres));
     }
 }
