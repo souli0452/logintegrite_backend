@@ -3,6 +3,7 @@ package bf.gov.ascelc.logintegrite_backend.controller;
 import bf.gov.ascelc.logintegrite_backend.dto.request.RegionRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.RegionResponse;
 import bf.gov.ascelc.logintegrite_backend.service.RegionService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs; // Importation de tes constantes
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,7 +14,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/regions")
+// Racine : /api/v1/referentiel/regions
+@RequestMapping(ApiURLs.REFERENTIEL + ApiURLs.REFERENTIEL_REGIONS)
 @RequiredArgsConstructor
 public class RegionController {
 

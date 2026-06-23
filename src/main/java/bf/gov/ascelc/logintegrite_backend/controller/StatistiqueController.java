@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import static bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs.*;
 
 @RestController
-@RequestMapping(STATISTIQUES) // "/api/statistiques"
+@RequestMapping(STATISTIQUES)
 @RequiredArgsConstructor
 public class StatistiqueController {
 

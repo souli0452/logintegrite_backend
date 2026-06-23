@@ -3,18 +3,22 @@ package bf.gov.ascelc.logintegrite_backend.controller;
 import bf.gov.ascelc.logintegrite_backend.dto.request.InfractionRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.InfractionResponse;
 import bf.gov.ascelc.logintegrite_backend.service.InfractionService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs; // Importation pour la propreté de l'architecture
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/infractions")
+@RequestMapping("/api/v1/infractions") // Aligné avec ton standard de versioning v1
 @RequiredArgsConstructor
+// Protection globale du contrôleur avec les rôles Keycloak validés
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
 public class InfractionController {
 
     private final InfractionService service;

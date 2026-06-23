@@ -3,6 +3,7 @@ package bf.gov.ascelc.logintegrite_backend.controller;
 import bf.gov.ascelc.logintegrite_backend.dto.request.TypeInfractionRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.TypeInfractionResponse;
 import bf.gov.ascelc.logintegrite_backend.service.TypeInfractionService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs; // Importation de tes constantes
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,7 +14,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/type-infractions")
+// Racine : /api/v1/referentiel/types-infraction
+@RequestMapping(ApiURLs.REFERENTIEL + ApiURLs.REFERENTIEL_TYPES_INFRACTION)
 @RequiredArgsConstructor
 public class TypeInfractionController {
 

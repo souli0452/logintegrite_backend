@@ -3,6 +3,7 @@ package bf.gov.ascelc.logintegrite_backend.controller;
 import bf.gov.ascelc.logintegrite_backend.dto.request.RechercheSauvegardeeRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.RechercheSauvegardeeResponse;
 import bf.gov.ascelc.logintegrite_backend.service.RechercheSauvegardeeService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs; // Importation de tes constantes
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,7 +16,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/recherches-sauvegardees")
+// Racine : /api/v1/recherches-sauvegardees
+@RequestMapping(ApiURLs.API_V1_ROOT + "/recherches-sauvegardees")
 @RequiredArgsConstructor
 public class RechercheSauvegardeeController {
 

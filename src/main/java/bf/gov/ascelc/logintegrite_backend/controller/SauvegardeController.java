@@ -3,6 +3,7 @@ package bf.gov.ascelc.logintegrite_backend.controller;
 import bf.gov.ascelc.logintegrite_backend.dto.request.SauvegardeRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.SauvegardeResponse;
 import bf.gov.ascelc.logintegrite_backend.service.SauvegardeService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs; // Importation de tes constantes
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/sauvegardes")
+@RequestMapping(ApiURLs.SAUVEGARDES) // Aligné dynamiquement sur "/api/v1/sauvegardes"
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMINISTRATEUR')")
 public class SauvegardeController {

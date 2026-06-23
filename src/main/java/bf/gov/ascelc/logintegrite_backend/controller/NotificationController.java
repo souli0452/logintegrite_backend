@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -15,13 +16,16 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/notifications")
+@RequestMapping("/api/v1/notifications") // N'hésite pas à remplacer par une constante globale de type ApiURLs.NOTIFICATIONS
 @RequiredArgsConstructor
+// On s'assure que seuls les utilisateurs authentifiés avec les rôles applicatifs accèdent aux endpoints
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
 public class NotificationController {
 
     private final NotificationService service;
 
     @PostMapping
+    // Seuls les agents ou les administrateurs (ou le système lors d'événements d'audit) créent des notifications
     public ResponseEntity<NotificationResponse> create(@Valid @RequestBody NotificationRequest request) {
         return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
     }

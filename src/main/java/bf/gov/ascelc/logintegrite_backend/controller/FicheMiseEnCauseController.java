@@ -15,13 +15,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping(ApiURLs.FICHES) // "/api/fiches"
+@RequestMapping(ApiURLs.FICHES) // Aligné dynamiquement sur "/api/v1/fiches"
 public class FicheMiseEnCauseController {
 
     private final FicheMiseEnCauseService ficheService;
     private final FicheMiseEnCauseMapper ficheMapper;
 
-
+    // Le constructeur explicite résout l'UnsatisfiedDependencyException en liant explicitement le Qualifier
     public FicheMiseEnCauseController(
             @Qualifier("ficheMiseEnCauseServiceImpl") FicheMiseEnCauseService ficheService,
             FicheMiseEnCauseMapper ficheMapper) {
@@ -29,13 +29,13 @@ public class FicheMiseEnCauseController {
         this.ficheMapper = ficheMapper;
     }
 
-    @GetMapping(ApiURLs.FICHES_ID) // "/{id}"
+    @GetMapping(ApiURLs.FICHES_ID) // URL finale : "/api/v1/fiches/{id}"
     public ResponseEntity<FicheMiseEnCauseResponse> consulter(@PathVariable UUID id) {
         FicheMiseEnCause fiche = ficheService.consulter(id);
         return ResponseEntity.ok(ficheMapper.toResponse(fiche));
     }
 
-    @PutMapping(ApiURLs.FICHES_SOUMETTRE) // "/{id}/soumettre"
+    @PutMapping(ApiURLs.FICHES_SOUMETTRE) // URL finale : "/api/v1/fiches/{id}/soumettre"
     public ResponseEntity<FicheMiseEnCauseResponse> soumettre(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
@@ -44,7 +44,7 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(ficheMapper.toResponse(fiche));
     }
 
-    @PutMapping(ApiURLs.FICHES_VALIDER) // "/{id}/valider"
+    @PutMapping(ApiURLs.FICHES_VALIDER) // URL finale : "/api/v1/fiches/{id}/valider"
     public ResponseEntity<FicheMiseEnCauseResponse> valider(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
@@ -53,7 +53,7 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(ficheMapper.toResponse(fiche));
     }
 
-    @PutMapping(ApiURLs.FICHES_REJETER) // "/{id}/rejeter"
+    @PutMapping(ApiURLs.FICHES_REJETER) // URL finale : "/api/v1/fiches/{id}/rejeter"
     public ResponseEntity<FicheMiseEnCauseResponse> rejeter(
             @PathVariable UUID id,
             @RequestParam String motif,
@@ -63,13 +63,13 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(ficheMapper.toResponse(fiche));
     }
 
-    @DeleteMapping(ApiURLs.FICHES_ARCHIVER) // "/{id}/archiver"
+    @DeleteMapping(ApiURLs.FICHES_ARCHIVER) // URL finale : "/api/v1/fiches/{id}/archiver"
     public ResponseEntity<Void> archiver(@PathVariable UUID id) {
         ficheService.archiver(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping(ApiURLs.FICHES_STATUT_JUDICIAIRE) // "/{id}/statut-judiciaire"
+    @PutMapping(ApiURLs.FICHES_STATUT_JUDICIAIRE) // URL finale : "/api/v1/fiches/{id}/statut-judiciaire"
     public ResponseEntity<FicheMiseEnCauseResponse> modifierStatutJudiciaire(
             @PathVariable UUID id,
             @RequestBody StatutJudiciaireRequest request,

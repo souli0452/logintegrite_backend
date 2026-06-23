@@ -3,6 +3,7 @@ package bf.gov.ascelc.logintegrite_backend.controller;
 import bf.gov.ascelc.logintegrite_backend.dto.request.PieceJointeRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.PieceJointeResponse;
 import bf.gov.ascelc.logintegrite_backend.service.PieceJointeService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs; // Importation essentielle
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,7 +16,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/pieces-jointes")
+// Racine : /api/v1/pieces-jointes
+@RequestMapping(ApiURLs.API_V1_ROOT + "/pieces-jointes")
 @RequiredArgsConstructor
 public class PieceJointeController {
 
