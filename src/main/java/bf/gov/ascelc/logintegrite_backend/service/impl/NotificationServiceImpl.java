@@ -8,6 +8,7 @@ import bf.gov.ascelc.logintegrite_backend.mapper.NotificationMapper;
 import bf.gov.ascelc.logintegrite_backend.repository.NotificationRepository;
 import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,25 +55,41 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public NotificationResponse markAsRead(UUID id) {
+    public NotificationResponse markAsRead(UUID id, String userId) {
         Notification entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification non trouvée avec l'id : " + id));
+
+        // Contrôle de propriété ajouté ici (IDOR)
+        verifierDestinataire(entity, userId);
+
         entity.setLue(true);
         return mapper.toResponse(repository.save(entity));
     }
 
     @Override
     public void markAllAsRead(String destinataireId) {
+        // Pas de contrôle supplémentaire nécessaire : la requête est déjà filtrée par destinataireId
         List<Notification> unread = repository.findByDestinataireIdAndLueFalseOrderByCreatedAtDesc(destinataireId);
         unread.forEach(notification -> notification.setLue(true));
         repository.saveAll(unread);
     }
 
     @Override
-    public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Notification non trouvée avec l'id : " + id);
+    public void delete(UUID id, String userId) {
+        Notification entity = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification non trouvée avec l'id : " + id));
+
+        // Contrôle de propriété ajouté ici (IDOR)
+        verifierDestinataire(entity, userId);
+
+        repository.delete(entity);
+    }
+
+    // Vérifie que la notification appartient bien à l'utilisateur courant
+    private void verifierDestinataire(Notification entity, String userId) {
+        if (entity.getDestinataireId() == null || !entity.getDestinataireId().equals(userId)) {
+            throw new AccessDeniedException(
+                    "La notification " + entity.getId() + " n'appartient pas à l'utilisateur courant.");
         }
-        repository.deleteById(id);
     }
 }

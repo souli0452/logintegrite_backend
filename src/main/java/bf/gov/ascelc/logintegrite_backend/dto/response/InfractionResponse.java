@@ -6,6 +6,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -15,12 +16,9 @@ import java.util.UUID;
 @SuperBuilder
 public class InfractionResponse extends AuditEntityDto {
 
-
-
     private UUID ficheId;
     private String nature;
 
-    // Jointures aplaties pour faciliter l'affichage immédiat dans l'IHM du front
     private UUID typeInfractionId;
     private String typeInfractionLibelle;
     private String typeInfractionCode;
@@ -32,4 +30,7 @@ public class InfractionResponse extends AuditEntityDto {
     private String devise;
     private String sources;
 
+
+    private List<PieceJointeResponse> piecesJointes;
+    private List<HistoriqueStatutResponse> historiqueStatuts;
 }

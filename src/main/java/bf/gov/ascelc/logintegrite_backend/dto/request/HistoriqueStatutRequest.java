@@ -17,6 +17,9 @@ public class HistoriqueStatutRequest {
     @NotNull(message = "L'ID de la fiche associée est obligatoire")
     private UUID ficheId;
 
+    // AJOUT : optionnel — précise quelle infraction de la fiche est concernée
+    private UUID infractionId;
+
     @Size(max = 50, message = "L'ancien statut ne doit pas dépasser 50 caractères")
     private String ancientStatut;
 

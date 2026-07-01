@@ -6,9 +6,16 @@ import java.util.List;
 import java.util.UUID;
 
 public interface RechercheSauvegardeeService {
+
     RechercheSauvegardeeResponse create(RechercheSauvegardeeRequest request);
-    RechercheSauvegardeeResponse update(UUID id, RechercheSauvegardeeRequest request);
-    RechercheSauvegardeeResponse getById(UUID id);
+
+    // AJOUT du paramètre userId : avant, seul getMySearches filtrait par utilisateur.
+    // update/getById/delete ne vérifiaient pas le propriétaire (IDOR).
+    RechercheSauvegardeeResponse update(UUID id, RechercheSauvegardeeRequest request, String userId);
+
+    RechercheSauvegardeeResponse getById(UUID id, String userId);
+
     List<RechercheSauvegardeeResponse> getMySearches(String userId);
-    void delete(UUID id);
+
+    void delete(UUID id, String userId);
 }

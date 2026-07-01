@@ -5,7 +5,11 @@ import bf.gov.ascelc.logintegrite_backend.dto.response.TypeInfractionResponse;
 import bf.gov.ascelc.logintegrite_backend.entity.TypeInfraction;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        unmappedSourcePolicy = ReportingPolicy.IGNORE,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface TypeInfractionMapper {
 
     TypeInfractionResponse toResponse(TypeInfraction entity);

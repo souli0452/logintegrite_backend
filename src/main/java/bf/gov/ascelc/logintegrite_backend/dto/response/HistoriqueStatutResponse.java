@@ -17,6 +17,7 @@ import java.util.UUID;
 @SuperBuilder
 public class HistoriqueStatutResponse extends AuditEntityDto {
     private UUID ficheId;
+    private UUID infractionId; // AJOUT
     private String ancientStatut;
     private String nouveauStatut;
     private String motif;

@@ -20,7 +20,6 @@ public class AuditController {
     private final JournalAuditRepository auditRepo;
 
     @GetMapping
-    // Remplacement de hasRole par hasAnyAuthority pour correspondre au format exact de tes jetons Keycloak
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
     public ResponseEntity<Page<JournalAudit>> journal(
             @RequestParam(defaultValue = "0")  int page,

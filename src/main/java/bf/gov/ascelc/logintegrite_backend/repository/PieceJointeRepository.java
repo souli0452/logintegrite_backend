@@ -9,6 +9,8 @@ import java.util.UUID;
 @Repository
 public interface PieceJointeRepository extends JpaRepository<PieceJointe, UUID> {
 
-    // Pour lister efficacement tous les justificatifs d'une fiche donnée
     List<PieceJointe> findByFicheId(UUID ficheId);
+
+    // AJOUT : liste des pièces jointes rattachées à une infraction précise
+    List<PieceJointe> findByInfractionId(UUID infractionId);
 }

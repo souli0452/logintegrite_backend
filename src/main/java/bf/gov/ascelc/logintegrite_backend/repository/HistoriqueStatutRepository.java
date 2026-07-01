@@ -9,6 +9,8 @@ import java.util.UUID;
 @Repository
 public interface HistoriqueStatutRepository extends JpaRepository<HistoriqueStatut, UUID> {
 
-    // Permet d'afficher la frise chronologique des changements d'état d'un dossier sur l'IHM
     List<HistoriqueStatut> findByFicheIdOrderByCreatedAtDesc(UUID ficheId);
+
+    // AJOUT : historique propre à une infraction précise
+    List<HistoriqueStatut> findByInfractionIdOrderByCreatedAtDesc(UUID infractionId);
 }

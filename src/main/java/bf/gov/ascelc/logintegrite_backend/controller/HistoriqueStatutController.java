@@ -22,13 +22,13 @@ public class HistoriqueStatutController {
 
     private final HistoriqueStatutService historiqueService;
 
-    // Changement de la route pour inclure l'ID de la fiche concernée (Standard RESTful)
     // URL finale : POST /api/v1/fiches/{ficheId}/historique-statut
     @PostMapping("/{ficheId}/historique-statut")
     public ResponseEntity<HistoriqueStatutResponse> changerStatutJudiciaire(
             @PathVariable UUID ficheId,
             @Valid @RequestBody HistoriqueStatutRequest request) {
-        // Optionnel : Tu peux injecter ou forcer le ficheId dans le service si nécessaire pour la cohérence
+
+        request.setFicheId(ficheId);
         return new ResponseEntity<>(historiqueService.create(request), HttpStatus.CREATED);
     }
 

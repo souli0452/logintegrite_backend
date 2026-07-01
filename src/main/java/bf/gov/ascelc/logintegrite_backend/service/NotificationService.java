@@ -10,7 +10,10 @@ public interface NotificationService {
     NotificationResponse getById(UUID id);
     List<NotificationResponse> getMyNotifications(String destinataireId);
     List<NotificationResponse> getMyUnreadNotifications(String destinataireId);
-    NotificationResponse markAsRead(UUID id);
+
+    // AJOUT du paramètre userId : avant, n'importe quel utilisateur authentifié
+    // pouvait marquer comme lue ou supprimer la notification de quelqu'un d'autre (IDOR)
+    NotificationResponse markAsRead(UUID id, String userId);
     void markAllAsRead(String destinataireId);
-    void delete(UUID id);
+    void delete(UUID id, String userId);
 }

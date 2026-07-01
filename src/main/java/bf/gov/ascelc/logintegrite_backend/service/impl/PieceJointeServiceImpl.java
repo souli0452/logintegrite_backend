@@ -3,10 +3,12 @@ package bf.gov.ascelc.logintegrite_backend.service.impl;
 import bf.gov.ascelc.logintegrite_backend.dto.request.PieceJointeRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.PieceJointeResponse;
 import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.entity.Infraction;
 import bf.gov.ascelc.logintegrite_backend.entity.PieceJointe;
 import bf.gov.ascelc.logintegrite_backend.exception.ResourceNotFoundException;
 import bf.gov.ascelc.logintegrite_backend.mapper.PieceJointeMapper;
 import bf.gov.ascelc.logintegrite_backend.repository.FicheMiseEnCauseRepository;
+import bf.gov.ascelc.logintegrite_backend.repository.InfractionRepository;
 import bf.gov.ascelc.logintegrite_backend.repository.PieceJointeRepository;
 import bf.gov.ascelc.logintegrite_backend.service.PieceJointeService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class PieceJointeServiceImpl implements PieceJointeService {
 
     private final PieceJointeRepository repository;
     private final FicheMiseEnCauseRepository ficheRepository;
+    private final InfractionRepository infractionRepository; // AJOUT
     private final PieceJointeMapper mapper;
 
     private final Path rootLocation = Paths.get("uploads");
@@ -40,15 +43,30 @@ public class PieceJointeServiceImpl implements PieceJointeService {
     public PieceJointeResponse create(PieceJointeRequest request) {
         PieceJointe entity = mapper.toEntity(request);
 
-        FicheMiseEnCause fiche = ficheRepository.findById(request.getFicheId())
-                .orElseThrow(() -> new ResourceNotFoundException("Fiche de mise en cause non trouvée avec l'id : " + request.getFicheId()));
-        entity.setFiche(fiche);
+        // MODIFIÉ : résolution fiche/infraction avec règle "au moins un des deux"
+        Infraction infraction = null;
+        if (request.getInfractionId() != null) {
+            infraction = infractionRepository.findById(request.getInfractionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Infraction non trouvée avec l'id : " + request.getInfractionId()));
+            entity.setInfraction(infraction);
+        }
+
+        if (request.getFicheId() != null) {
+            FicheMiseEnCause fiche = ficheRepository.findById(request.getFicheId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Fiche de mise en cause non trouvée avec l'id : " + request.getFicheId()));
+            entity.setFiche(fiche);
+        } else if (infraction != null) {
+            // Dérive la fiche depuis l'infraction si seul infractionId a été fourni
+            entity.setFiche(infraction.getFiche());
+        } else {
+            throw new IllegalStateException("Vous devez renseigner ficheId ou infractionId pour rattacher la pièce jointe.");
+        }
 
         return mapper.toResponse(repository.save(entity));
     }
 
     @Override
-    public PieceJointeResponse enregistrerFichierPhysique(UUID ficheId, MultipartFile file) {
+    public PieceJointeResponse enregistrerFichierPhysique(UUID ficheId, UUID infractionId, MultipartFile file) {
         try {
             if (file.isEmpty()) {
                 throw new IllegalArgumentException("Impossible d'enregistrer un fichier vide.");
@@ -61,12 +79,11 @@ public class PieceJointeServiceImpl implements PieceJointeService {
             String nomUnique = UUID.randomUUID().toString() + "_" + nomOriginal;
             Path destination = rootLocation.resolve(nomUnique);
 
-
             Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
-
 
             PieceJointeRequest request = PieceJointeRequest.builder()
                     .ficheId(ficheId)
+                    .infractionId(infractionId)
                     .nomFichier(nomOriginal)
                     .typeFichier(file.getContentType())
                     .tailleOctets(file.getSize())
@@ -87,10 +104,18 @@ public class PieceJointeServiceImpl implements PieceJointeService {
 
         mapper.updateEntityFromRequest(request, entity);
 
-        if (!entity.getFiche().getId().equals(request.getFicheId())) {
+        if (request.getFicheId() != null &&
+                (entity.getFiche() == null || !entity.getFiche().getId().equals(request.getFicheId()))) {
             FicheMiseEnCause fiche = ficheRepository.findById(request.getFicheId())
                     .orElseThrow(() -> new ResourceNotFoundException("Fiche de mise en cause non trouvée avec l'id : " + request.getFicheId()));
             entity.setFiche(fiche);
+        }
+
+        if (request.getInfractionId() != null &&
+                (entity.getInfraction() == null || !entity.getInfraction().getId().equals(request.getInfractionId()))) {
+            Infraction infraction = infractionRepository.findById(request.getInfractionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Infraction non trouvée avec l'id : " + request.getInfractionId()));
+            entity.setInfraction(infraction);
         }
 
         return mapper.toResponse(repository.save(entity));
@@ -121,16 +146,22 @@ public class PieceJointeServiceImpl implements PieceJointeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<PieceJointeResponse> getByInfractionId(UUID infractionId) {
+        return repository.findByInfractionId(infractionId).stream()
+                .map(mapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void delete(UUID id) {
         PieceJointe entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Pièce jointe non trouvée avec l'id : " + id));
 
-        // Suppression physique optionnelle du fichier sur le disque pour libérer l'espace sur le serveur
         try {
             Path fichierPhysique = Paths.get(entity.getUrlStockage());
             Files.deleteIfExists(fichierPhysique);
         } catch (IOException ignored) {
-            // Log de débogage si nécessaire, ne bloque pas la suppression en base
         }
 
         repository.delete(entity);

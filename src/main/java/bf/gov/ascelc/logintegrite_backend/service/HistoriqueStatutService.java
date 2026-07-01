@@ -9,4 +9,7 @@ public interface HistoriqueStatutService {
     HistoriqueStatutResponse create(HistoriqueStatutRequest request);
     HistoriqueStatutResponse getById(UUID id);
     List<HistoriqueStatutResponse> getByFicheId(UUID ficheId);
+
+    // AJOUT
+    List<HistoriqueStatutResponse> getByInfractionId(UUID infractionId);
 }

@@ -15,6 +15,7 @@ import java.util.UUID;
 @SuperBuilder
 public class PieceJointeResponse extends AuditEntityDto {
     private UUID ficheId;
+    private UUID infractionId;
     private String nomFichier;
     private String typeFichier;
     private Long tailleOctets;

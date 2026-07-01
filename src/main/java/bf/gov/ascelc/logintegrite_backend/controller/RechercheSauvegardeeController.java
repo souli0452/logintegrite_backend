@@ -3,7 +3,7 @@ package bf.gov.ascelc.logintegrite_backend.controller;
 import bf.gov.ascelc.logintegrite_backend.dto.request.RechercheSauvegardeeRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.RechercheSauvegardeeResponse;
 import bf.gov.ascelc.logintegrite_backend.service.RechercheSauvegardeeService;
-import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs; // Importation de tes constantes
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,28 +28,34 @@ public class RechercheSauvegardeeController {
         return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
     }
 
+    //  transmet l'utilisateur courant pour le contrôle de propriété (IDOR)
     @PutMapping("/{id}")
     public ResponseEntity<RechercheSauvegardeeResponse> update(
             @PathVariable UUID id,
-            @Valid @RequestBody RechercheSauvegardeeRequest request) {
-        return ResponseEntity.ok(service.update(id, request));
+            @Valid @RequestBody RechercheSauvegardeeRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(service.update(id, request, userId));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<RechercheSauvegardeeResponse> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(service.getById(id));
+    public ResponseEntity<RechercheSauvegardeeResponse> getById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(service.getById(id, userId));
     }
 
     @GetMapping("/me")
     public ResponseEntity<List<RechercheSauvegardeeResponse>> getMySearches(@AuthenticationPrincipal Jwt jwt) {
-        // Extraction sécurisée de l'ID utilisateur Keycloak (le subject)
         String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
         return ResponseEntity.ok(service.getMySearches(userId));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        service.delete(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

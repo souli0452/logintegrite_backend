@@ -5,7 +5,11 @@ import bf.gov.ascelc.logintegrite_backend.dto.response.RegionResponse;
 import bf.gov.ascelc.logintegrite_backend.entity.Region;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        unmappedSourcePolicy = ReportingPolicy.IGNORE,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface RegionMapper {
 
     RegionResponse toResponse(Region entity);

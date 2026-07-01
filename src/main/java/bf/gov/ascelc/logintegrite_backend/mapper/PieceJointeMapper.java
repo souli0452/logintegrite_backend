@@ -5,7 +5,11 @@ import bf.gov.ascelc.logintegrite_backend.dto.response.PieceJointeResponse;
 import bf.gov.ascelc.logintegrite_backend.entity.PieceJointe;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring", unmappedSourcePolicy = ReportingPolicy.IGNORE)
+@Mapper(
+        componentModel = "spring",
+        unmappedSourcePolicy = ReportingPolicy.IGNORE,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE // Ajouté ici
+)
 public interface PieceJointeMapper {
 
     @Mapping(source = "fiche.id", target = "ficheId")

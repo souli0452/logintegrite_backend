@@ -46,6 +46,7 @@ public final class ApiURLs {
     public static final String REFERENTIEL_REGIONS = "/regions";
     public static final String REFERENTIEL_ENTITES = "/entites";
     public static final String REFERENTIEL_TYPES_INFRACTION = "/types-infraction";
+    public static final String REFERENTIEL_STATUTS_JUDICIAIRES = "/statuts-judiciaires"; // AJOUT
 
     // Statistiques
     public static final String STATISTIQUES = API_V1_ROOT + "/statistiques";

@@ -5,7 +5,11 @@ import bf.gov.ascelc.logintegrite_backend.dto.response.RechercheSauvegardeeRespo
 import bf.gov.ascelc.logintegrite_backend.entity.RechercheSauvegardee;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        unmappedSourcePolicy = ReportingPolicy.IGNORE,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface RechercheSauvegardeeMapper {
 
     RechercheSauvegardeeResponse toResponse(RechercheSauvegardee entity);

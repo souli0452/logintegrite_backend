@@ -8,7 +8,7 @@ import java.util.Map;
 @Builder
 public class StatistiqueResponse {
 
-    private long totalFiches; // Aligné pour éviter le conflit avec .totalFiches(total)
+    private long totalFiches;
     private long fichesEnAttente;
     private long fichesBrouillon;
     private Map<String, Long> parStatutJudiciaire;

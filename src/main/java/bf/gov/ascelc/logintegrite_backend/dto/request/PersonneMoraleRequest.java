@@ -1,8 +1,10 @@
 package bf.gov.ascelc.logintegrite_backend.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import java.util.UUID; // Import indispensable
 
 @Data
 @NoArgsConstructor
@@ -28,4 +30,11 @@ public class PersonneMoraleRequest {
 
     @Size(max = 200, message = "La fonction du responsable ne doit pas dépasser 200 caractères")
     private String fonctionResponsable;
+
+    // ── TYPES RERECTIFIÉS EN UUID ──
+    @NotNull(message = "La région est obligatoire")
+    private UUID regionId;
+
+    @NotNull(message = "L'entité d'organisation est obligatoire")
+    private UUID entiteId;
 }

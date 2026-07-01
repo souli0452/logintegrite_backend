@@ -5,7 +5,11 @@ import bf.gov.ascelc.logintegrite_backend.dto.response.NotificationResponse;
 import bf.gov.ascelc.logintegrite_backend.entity.Notification;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        unmappedSourcePolicy = ReportingPolicy.IGNORE,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface NotificationMapper {
 
     NotificationResponse toResponse(Notification entity);

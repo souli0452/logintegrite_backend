@@ -16,16 +16,14 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/notifications") // N'hésite pas à remplacer par une constante globale de type ApiURLs.NOTIFICATIONS
+@RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
-// On s'assure que seuls les utilisateurs authentifiés avec les rôles applicatifs accèdent aux endpoints
 @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
 public class NotificationController {
 
     private final NotificationService service;
 
     @PostMapping
-    // Seuls les agents ou les administrateurs (ou le système lors d'événements d'audit) créent des notifications
     public ResponseEntity<NotificationResponse> create(@Valid @RequestBody NotificationRequest request) {
         return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
     }
@@ -42,9 +40,11 @@ public class NotificationController {
         return ResponseEntity.ok(service.getMyUnreadNotifications(userId));
     }
 
+    // MODIFIÉ : transmet l'utilisateur courant pour le contrôle de propriété (IDOR)
     @PutMapping("/{id}/read")
-    public ResponseEntity<NotificationResponse> markAsRead(@PathVariable UUID id) {
-        return ResponseEntity.ok(service.markAsRead(id));
+    public ResponseEntity<NotificationResponse> markAsRead(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(service.markAsRead(id, userId));
     }
 
     @PutMapping("/read-all")
@@ -54,9 +54,11 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
+    // MODIFIÉ : idem
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        service.delete(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

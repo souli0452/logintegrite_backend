@@ -1,9 +1,11 @@
 package bf.gov.ascelc.logintegrite_backend.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import java.time.LocalDate;
+import java.util.UUID; // ── IMPORT INDISPENSABLE ──
 
 @Data
 @NoArgsConstructor
@@ -37,4 +39,10 @@ public class PersonnePhysiqueRequest {
     @Size(max = 500, message = "L'URL de la photo ne doit pas dépasser 500 caractères")
     private String photoUrl;
 
+    // ── CORRECTION : AJOUT DES CLÉS DE RÉFÉRENTIELS (UUID) ──
+    @NotNull(message = "L'organisation (Entité) rattachement est obligatoire")
+    private UUID entiteId;
+
+    @NotNull(message = "La région de rattachement est obligatoire")
+    private UUID regionId;
 }

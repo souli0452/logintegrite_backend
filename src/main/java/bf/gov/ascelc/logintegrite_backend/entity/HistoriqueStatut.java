@@ -23,7 +23,12 @@ public class HistoriqueStatut extends AuditEntity {
     @JsonIgnoreProperties("historiqueStatuts")
     private FicheMiseEnCause fiche;
 
-    // ── RECOUVREMENT DES ENUMS PAR DES STRINGS (DSI FLEXIBILITÉ) ──
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "infraction_id")
+    @JsonIgnoreProperties({"fiche"})
+    private Infraction infraction;
+
     @Column(name = "ancien_statut", length = 50)
     private String ancientStatut;
 
@@ -49,7 +54,4 @@ public class HistoriqueStatut extends AuditEntity {
 
     @Column(columnDefinition = "TEXT")
     private String motifRelaxe;
-
-    // Note: 'agentId' et 'dateChangement' ont été retirés car ils correspondent
-    // exactement à 'createdById' et 'createdAt' hérités de AuditEntity.
 }

@@ -2,8 +2,11 @@ package bf.gov.ascelc.logintegrite_backend.controller;
 
 import bf.gov.ascelc.logintegrite_backend.dto.request.InfractionRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.InfractionResponse;
+import bf.gov.ascelc.logintegrite_backend.dto.response.PieceJointeResponse;
+import bf.gov.ascelc.logintegrite_backend.dto.response.HistoriqueStatutResponse;
 import bf.gov.ascelc.logintegrite_backend.service.InfractionService;
-import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs; // Importation pour la propreté de l'architecture
+import bf.gov.ascelc.logintegrite_backend.service.PieceJointeService;
+import bf.gov.ascelc.logintegrite_backend.service.HistoriqueStatutService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,13 +18,14 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/infractions") // Aligné avec ton standard de versioning v1
+@RequestMapping("/api/v1/infractions")
 @RequiredArgsConstructor
-// Protection globale du contrôleur avec les rôles Keycloak validés
 @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
 public class InfractionController {
 
     private final InfractionService service;
+    private final PieceJointeService pieceJointeService;       // AJOUT
+    private final HistoriqueStatutService historiqueStatutService; // AJOUT
 
     @PostMapping
     public ResponseEntity<InfractionResponse> create(@Valid @RequestBody InfractionRequest request) {
@@ -46,6 +50,18 @@ public class InfractionController {
     @GetMapping("/fiche/{ficheId}")
     public ResponseEntity<List<InfractionResponse>> getByFicheId(@PathVariable UUID ficheId) {
         return ResponseEntity.ok(service.getByFicheId(ficheId));
+    }
+
+    // AJOUT : accès direct aux pièces jointes d'une infraction
+    @GetMapping("/{id}/pieces-jointes")
+    public ResponseEntity<List<PieceJointeResponse>> getPiecesJointes(@PathVariable UUID id) {
+        return ResponseEntity.ok(pieceJointeService.getByInfractionId(id));
+    }
+
+    // AJOUT : accès direct à l'historique de statut d'une infraction
+    @GetMapping("/{id}/historique-statuts")
+    public ResponseEntity<List<HistoriqueStatutResponse>> getHistoriqueStatuts(@PathVariable UUID id) {
+        return ResponseEntity.ok(historiqueStatutService.getByInfractionId(id));
     }
 
     @DeleteMapping("/{id}")

@@ -8,6 +8,7 @@ import bf.gov.ascelc.logintegrite_backend.mapper.RechercheSauvegardeeMapper;
 import bf.gov.ascelc.logintegrite_backend.repository.RechercheSauvegardeeRepository;
 import bf.gov.ascelc.logintegrite_backend.service.RechercheSauvegardeeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,9 +31,12 @@ public class RechercheSauvegardeeServiceImpl implements RechercheSauvegardeeServ
     }
 
     @Override
-    public RechercheSauvegardeeResponse update(UUID id, RechercheSauvegardeeRequest request) {
+    public RechercheSauvegardeeResponse update(UUID id, RechercheSauvegardeeRequest request, String userId) {
         RechercheSauvegardee entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recherche sauvegardée non trouvée avec l'id : " + id));
+
+        // Contrôle de propriété ajouté ici (IDOR)
+        verifierProprietaire(entity, userId);
 
         mapper.updateEntityFromRequest(request, entity);
         return mapper.toResponse(repository.save(entity));
@@ -40,26 +44,40 @@ public class RechercheSauvegardeeServiceImpl implements RechercheSauvegardeeServ
 
     @Override
     @Transactional(readOnly = true)
-    public RechercheSauvegardeeResponse getById(UUID id) {
-        return repository.findById(id)
-                .map(mapper::toResponse)
+    public RechercheSauvegardeeResponse getById(UUID id, String userId) {
+        RechercheSauvegardee entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recherche sauvegardée non trouvée avec l'id : " + id));
+
+        // Contrôle de propriété ajouté ici (IDOR)
+        verifierProprietaire(entity, userId);
+
+        return mapper.toResponse(entity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RechercheSauvegardeeResponse> getMySearches(String userId) {
-        // CORRECTION ICI : Changement de findByCreatedBy... vers findByCreatedById...
         return repository.findByCreatedByIdOrderByCreatedAtDesc(userId).stream()
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Recherche sauvegardée non trouvée avec l'id : " + id);
+    public void delete(UUID id, String userId) {
+        RechercheSauvegardee entity = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Recherche sauvegardée non trouvée avec l'id : " + id));
+
+        // Contrôle de propriété ajouté ici (IDOR)
+        verifierProprietaire(entity, userId);
+
+        repository.delete(entity);
+    }
+
+    // Vérifie que la recherche appartient bien à l'utilisateur courant
+    private void verifierProprietaire(RechercheSauvegardee entity, String userId) {
+        if (entity.getCreatedById() == null || !entity.getCreatedById().equals(userId)) {
+            throw new AccessDeniedException(
+                    "La recherche sauvegardée " + entity.getId() + " n'appartient pas à l'utilisateur courant.");
         }
-        repository.deleteById(id);
     }
 }

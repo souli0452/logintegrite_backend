@@ -21,6 +21,11 @@ public class PieceJointe extends AuditEntity {
     @JsonIgnoreProperties("piecesJointes")
     private FicheMiseEnCause fiche;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "infraction_id")
+    @JsonIgnoreProperties({"fiche"})
+    private Infraction infraction;
+
     @Column(nullable = false, length = 255)
     private String nomFichier;
 
@@ -31,6 +36,4 @@ public class PieceJointe extends AuditEntity {
 
     @Column(nullable = false, length = 500)
     private String urlStockage;
-
-
 }

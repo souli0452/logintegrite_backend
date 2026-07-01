@@ -8,10 +8,17 @@ import java.util.UUID;
 
 public interface PieceJointeService {
     PieceJointeResponse create(PieceJointeRequest request);
-    PieceJointeResponse enregistrerFichierPhysique(UUID ficheId, MultipartFile file);
+
+    // MODIFIÉ : infractionId ajouté, ficheId devient optionnel si infractionId fourni
+    PieceJointeResponse enregistrerFichierPhysique(UUID ficheId, UUID infractionId, MultipartFile file);
+
     PieceJointeResponse update(UUID id, PieceJointeRequest request);
     PieceJointeResponse getById(UUID id);
     List<PieceJointeResponse> getAll();
     List<PieceJointeResponse> getByFicheId(UUID ficheId);
+
+    // AJOUT
+    List<PieceJointeResponse> getByInfractionId(UUID infractionId);
+
     void delete(UUID id);
 }

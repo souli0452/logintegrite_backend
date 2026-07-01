@@ -1,24 +1,25 @@
 package bf.gov.ascelc.logintegrite_backend.mapper;
 
 import bf.gov.ascelc.logintegrite_backend.dto.response.FicheMiseEnCauseResponse;
+import bf.gov.ascelc.logintegrite_backend.dto.response.FicheDetailResponse;
 import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonneMorale;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
 import org.mapstruct.*;
 
+
 @Mapper(
-        componentModel = MappingConstants.ComponentModel.SPRING, // Permet d'injecter le mapper avec @Autowired/@RequiredArgsConstructor
-        unmappedTargetPolicy = ReportingPolicy.IGNORE
+        componentModel = MappingConstants.ComponentModel.SPRING,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE,
+        uses = {InfractionMapper.class, PieceJointeMapper.class, HistoriqueStatutMapper.class}
 )
 public interface FicheMiseEnCauseMapper {
 
-    // ── CONFIGURATION DE L'HÉRITAGE D'ENTITÉS ─────────────────────────────────
-    // MapStruct va automatiquement rediriger l'appel vers la bonne méthode de mapping selon le type réel
+    // 1. MAPPINGS POUR LE TABLEAU DE BORD (LISTE FLUIDE)
     @SubclassMapping(source = PersonnePhysique.class, target = FicheMiseEnCauseResponse.class)
     @SubclassMapping(source = PersonneMorale.class, target = FicheMiseEnCauseResponse.class)
     FicheMiseEnCauseResponse toResponse(FicheMiseEnCause fiche);
 
-    // ── MAPPING DÉTAILLÉ : PERSONNE PHYSIQUE ─────────────────────────────────
     @Mapping(target = "typeFiche", constant = "PP")
     @Mapping(target = "dateModification", source = "updatedAt")
     @Mapping(target = "entiteNom", source = "entite.nom")
@@ -27,7 +28,6 @@ public interface FicheMiseEnCauseMapper {
     @Mapping(target = "cibleNom", expression = "java(pp.getNom() + \" \" + (pp.getPrenoms() != null ? pp.getPrenoms() : \"\"))")
     FicheMiseEnCauseResponse ppToResponse(PersonnePhysique pp);
 
-    // ── MAPPING DÉTAILLÉ : PERSONNE MORALE ───────────────────────────────────
     @Mapping(target = "typeFiche", constant = "PM")
     @Mapping(target = "dateModification", source = "updatedAt")
     @Mapping(target = "entiteNom", source = "entite.nom")
@@ -35,4 +35,27 @@ public interface FicheMiseEnCauseMapper {
     @Mapping(target = "identifiantUnique", source = "ifu")
     @Mapping(target = "cibleNom", source = "raisonSociale")
     FicheMiseEnCauseResponse pmToResponse(PersonneMorale pm);
+
+
+    // 2. MAPPINGS POUR LA VUE DÉTAILLÉE (ACCORDÉONS ANGULAR)
+
+    @SubclassMapping(source = PersonnePhysique.class, target = FicheDetailResponse.class)
+    @SubclassMapping(source = PersonneMorale.class, target = FicheDetailResponse.class)
+    FicheDetailResponse toDetailResponse(FicheMiseEnCause fiche);
+
+    // ── MAPPING DÉTAILLÉ : PERSONNE PHYSIQUE ─────────────────────────────────
+
+    @Mapping(target = "entiteNom", source = "entite.nom")
+    @Mapping(target = "regionNom", source = "region.nom")
+    @Mapping(target = "identifiantUnique", source = "matricule")
+    FicheDetailResponse ppToDetailResponse(PersonnePhysique pp);
+
+    // ── MAPPING DÉTAILLÉ : PERSONNE MORALE ───────────────────────────────────
+    @Mapping(target = "typeFiche", constant = "PM")
+    @Mapping(target = "entiteNom", source = "entite.nom")
+    @Mapping(target = "regionNom", source = "region.nom")
+    @Mapping(target = "identifiantUnique", source = "ifu")
+    FicheDetailResponse pmToDetailResponse(PersonneMorale pm);
+
+
 }

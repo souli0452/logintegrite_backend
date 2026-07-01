@@ -1,7 +1,6 @@
 package bf.gov.ascelc.logintegrite_backend.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import java.util.UUID;
@@ -12,8 +11,11 @@ import java.util.UUID;
 @Builder
 public class PieceJointeRequest {
 
-    @NotNull(message = "L'ID de la fiche de mise en cause associée est obligatoire")
+
     private UUID ficheId;
+
+    // AJOUT : rattachement optionnel à une infraction précise
+    private UUID infractionId;
 
     @NotBlank(message = "Le nom du fichier est obligatoire")
     @Size(max = 255, message = "Le nom du fichier ne doit pas dépasser 255 caractères")

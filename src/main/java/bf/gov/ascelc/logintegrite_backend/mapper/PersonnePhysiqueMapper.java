@@ -7,7 +7,11 @@ import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
 import org.mapstruct.*;
 import java.util.List;
 
-@Mapper(componentModel = "spring", unmappedSourcePolicy = ReportingPolicy.IGNORE)
+@Mapper(
+        componentModel = "spring",
+        unmappedSourcePolicy = ReportingPolicy.IGNORE,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE // ── MAGIE : Supprime tous les warnings de ce fichier ──
+)
 public interface PersonnePhysiqueMapper {
 
     PersonnePhysiqueResponse toResponse(PersonnePhysique entity);
@@ -16,8 +20,12 @@ public interface PersonnePhysiqueMapper {
 
     List<PersonnePhysiquePublicResponse> toPublicResponseList(List<PersonnePhysique> entities);
 
+    @Mapping(target = "region.id", source = "regionId")
+    @Mapping(target = "entite.id", source = "entiteId")
     PersonnePhysique toEntity(PersonnePhysiqueRequest request);
 
+    @Mapping(target = "region.id", source = "regionId")
+    @Mapping(target = "entite.id", source = "entiteId")
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateEntityFromRequest(PersonnePhysiqueRequest request, @MappingTarget PersonnePhysique entity);
 }
