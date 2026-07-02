@@ -13,4 +13,8 @@ public class StatistiqueRequest {
     private LocalDate dateFin;
     private UUID regionId;
     private UUID entiteId;
+    private UUID typeInfractionId;
+
+    // Axe de l'histogramme paramétrable : "REGION" (défaut), "ENTITE", "INFRACTION"
+    private String groupBy;
 }

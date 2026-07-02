@@ -26,12 +26,22 @@ public class GlobalExceptionHandler {
                 .body(Map.of("erreur", ex.getMessage()));
     }
 
+    // AJOUT : une personne ou une structure est déjà inscrite au registre
+    // officiel. On renvoie 409 CONFLICT avec l'ID de la fiche existante pour
+    // permettre au frontend de rediriger l'utilisateur vers celle-ci.
+    @ExceptionHandler(FicheDejaExistanteException.class)
+    public ResponseEntity<Map<String, Object>> ficheDejaExistante(FicheDejaExistanteException ex) {
+        Map<String, Object> corps = new HashMap<>();
+        corps.put("erreur", ex.getMessage());
+        corps.put("ficheExistanteId", ex.getFicheExistanteId());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(corps);
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> badRequest(IllegalStateException ex) {
         return ResponseEntity.badRequest()
                 .body(Map.of("erreur", ex.getMessage()));
     }
-
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> validationEchouee(MethodArgumentNotValidException ex) {
@@ -45,15 +55,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(corps);
     }
 
-    // Accès refusé par une annotation @PreAuthorize
     @ExceptionHandler(AuthorizationDeniedException.class)
     public ResponseEntity<Map<String, String>> accesRefusePreAuthorize(AuthorizationDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("erreur", "Accès refusé : privilèges insuffisants pour cette action."));
     }
 
-    // Accès refusé levé manuellement dans le code (contrôle de propriété / IDOR)
-    // Utilisé par RechercheSauvegardeeServiceImpl et NotificationServiceImpl
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, String>> accesRefuseManuel(AccessDeniedException ex) {
         log.warn("Accès refusé (contrôle de propriété) : {}", ex.getMessage());
@@ -61,8 +68,6 @@ public class GlobalExceptionHandler {
                 .body(Map.of("erreur", "Accès refusé : vous n'êtes pas autorisé à accéder à cette ressource."));
     }
 
-    // Handler générique : ne renvoie plus ex.getMessage() brut au client,
-    // et journalise désormais l'erreur côté serveur avec une référence
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> generic(Exception ex) {
         String reference = UUID.randomUUID().toString();

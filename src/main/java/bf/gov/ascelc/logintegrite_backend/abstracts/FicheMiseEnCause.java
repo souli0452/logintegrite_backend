@@ -1,6 +1,5 @@
 package bf.gov.ascelc.logintegrite_backend.abstracts;
 
-import bf.gov.ascelc.logintegrite_backend.abstracts.AuditEntity;
 import bf.gov.ascelc.logintegrite_backend.entity.*;
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,7 +19,6 @@ import java.util.List;
         discriminatorType = DiscriminatorType.STRING,
         length = 31
 )
-// Soft delete ciblant la bonne table avec le champ d'audit de AuditEntity (updatedAt)
 @SQLDelete(sql = "UPDATE fiche_mise_en_cause SET deleted = true, updated_at = NOW() WHERE id = ? AND version = ?")
 @SQLRestriction("deleted = false")
 @Getter
@@ -30,7 +28,6 @@ import java.util.List;
 @AllArgsConstructor
 public abstract class FicheMiseEnCause extends AuditEntity {
 
-    // ── STATUTS DYNAMIQUES  ──
     @Column(name = "statut_fiche", nullable = false, length = 30)
     @Builder.Default
     private String statutFiche = "BROUILLON";
@@ -39,7 +36,6 @@ public abstract class FicheMiseEnCause extends AuditEntity {
     @Builder.Default
     private String statutJudiciaire = "POURSUITE_EN_COURS";
 
-    // ── WORKFLOW DE VALIDATION ────────────────────────────────
     @Column(columnDefinition = "TEXT")
     private String motifRejet;
 
@@ -52,16 +48,13 @@ public abstract class FicheMiseEnCause extends AuditEntity {
 
     private LocalDateTime dateValidation;
 
-    // ── SOFT DELETE ───────────────────────────────────────────
     @Column(nullable = false)
     @Builder.Default
     private Boolean deleted = false;
 
-    // ── OPTIMISTIC LOCKING ────────────────────────────────────
     @Version
     private Integer version;
 
-    // ── RELATIONS COMMUNES ────────────────────────────────────
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "entite_id")
     private EntiteOrganisation entite;
@@ -81,4 +74,47 @@ public abstract class FicheMiseEnCause extends AuditEntity {
     @OneToMany(mappedBy = "fiche", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<PieceJointe> piecesJointes = new ArrayList<>();
+
+    // Machine à états centralisée ici. PersonnePhysique/PersonneMorale
+    // héritent de ces méthodes — c'est ce qui manquait pour que
+    // PersonneMoraleServiceImpl.f.soumettre(agentId) etc. compilent.
+
+    public void soumettre(String agentId) {
+        if (!"BROUILLON".equals(statutFiche) && !"REJETE".equals(statutFiche)) {
+            throw new IllegalStateException(
+                    "Impossible de soumettre une fiche au statut " + statutFiche);
+        }
+        this.statutFiche = "EN_ATTENTE_VALIDATION";
+        this.nbSoumissions = (this.nbSoumissions == null ? 0 : this.nbSoumissions) + 1;
+    }
+
+    public void valider(String validateurId) {
+        if (!"EN_ATTENTE_VALIDATION".equals(statutFiche)) {
+            throw new IllegalStateException(
+                    "Impossible de valider une fiche au statut " + statutFiche);
+        }
+        this.statutFiche = "ACTIVE";
+        this.validateurId = validateurId;
+        this.dateValidation = LocalDateTime.now();
+        this.motifRejet = null;
+    }
+
+    public void rejeter(String motif, String validateurId) {
+        if (!"EN_ATTENTE_VALIDATION".equals(statutFiche)) {
+            throw new IllegalStateException(
+                    "Impossible de rejeter une fiche au statut " + statutFiche);
+        }
+        this.statutFiche = "REJETE";
+        this.motifRejet = motif;
+        this.validateurId = validateurId;
+        this.dateValidation = LocalDateTime.now();
+    }
+
+    public void archiver() {
+        if (!"ACTIVE".equals(statutFiche) && !"REJETE".equals(statutFiche)) {
+            throw new IllegalStateException(
+                    "Impossible d'archiver une fiche au statut " + statutFiche);
+        }
+        this.statutFiche = "ARCHIVE";
+    }
 }

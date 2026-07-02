@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,7 +17,6 @@ import java.util.UUID;
 @Repository
 public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, UUID> {
 
-    // Alignement du champ sur "entite" pour correspondre à la structure de l'entité
     @EntityGraph(attributePaths = {"entite", "region"})
     Optional<PersonneMorale> findWithRelationsById(UUID id);
 
@@ -40,4 +40,37 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
             @Param("statut") String statut,
             @Param("typeStructure") String typeStructure,
             Pageable pageable);
+
+    @Query("SELECT m FROM PersonneMorale m WHERE m.statutFiche = 'ACTIVE' AND m.ifu = :ifu")
+    Optional<PersonneMorale> findActiveByIfu(@Param("ifu") String ifu);
+
+    @Query("SELECT m FROM PersonneMorale m WHERE m.statutFiche = 'ACTIVE' AND LOWER(m.raisonSociale) = LOWER(:raisonSociale)")
+    Optional<PersonneMorale> findActiveByRaisonSociale(@Param("raisonSociale") String raisonSociale);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
+    @Query("SELECT m FROM PersonneMorale m WHERE m.createdById = :createdById AND " +
+            "(:statut IS NULL OR m.statutFiche = :statut)")
+    Page<PersonneMorale> rechercheMesFiches(
+            @Param("createdById") String createdById,
+            @Param("statut") String statut,
+            Pageable pageable);
+
+    @Query("SELECT COUNT(DISTINCT m) FROM PersonneMorale m " +
+            "LEFT JOIN m.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
+            "(:regionId IS NULL OR m.region.id = :regionId) AND " +
+            "(:entiteId IS NULL OR m.entite.id = :entiteId) AND " +
+            "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
+            "(:dateDebut IS NULL OR m.createdAt >= :dateDebut) AND " +
+            "(:dateFin IS NULL OR m.createdAt <= :dateFin)")
+    long countFiltre(
+            @Param("regionId") UUID regionId,
+            @Param("entiteId") UUID entiteId,
+            @Param("typeInfractionId") UUID typeInfractionId,
+            @Param("dateDebut") LocalDateTime dateDebut,
+            @Param("dateFin") LocalDateTime dateFin);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
+    @Query("SELECT m FROM PersonneMorale m WHERE m.createdById = :userId AND " +
+            "m.statutFiche IN ('BROUILLON', 'EN_ATTENTE_VALIDATION') ORDER BY m.updatedAt DESC")
+    List<PersonneMorale> findRecentesByCreateur(@Param("userId") String userId, Pageable pageable);
 }

@@ -4,8 +4,12 @@ import bf.gov.ascelc.logintegrite_backend.config.security.JwtRoleUtils;
 import bf.gov.ascelc.logintegrite_backend.dto.request.PersonneMoraleRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.PersonneMoraleResponse;
+import bf.gov.ascelc.logintegrite_backend.dto.response.VerificationExistenceResponse;
+import bf.gov.ascelc.logintegrite_backend.service.AuditService;
 import bf.gov.ascelc.logintegrite_backend.service.PersonneMoraleService;
 import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +19,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
 
 import java.util.UUID;
 
@@ -25,11 +28,33 @@ import java.util.UUID;
 public class PersonneMoraleController {
 
     private final PersonneMoraleService pmService;
+    private final AuditService auditService;
+    private final HttpServletRequest request;
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
-    public ResponseEntity<PersonneMoraleResponse> creer(@Valid @RequestBody PersonneMoraleRequest request) {
-        return ResponseEntity.ok(pmService.creerFiche(request));
+    public ResponseEntity<PersonneMoraleResponse> creer(@Valid @RequestBody PersonneMoraleRequest req, @AuthenticationPrincipal Jwt jwt) {
+        PersonneMoraleResponse response = pmService.creerFiche(req);
+        auditService.log(jwt, "CREATION_FICHE_PM", "PersonneMorale", response.getId().toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/verifier")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<VerificationExistenceResponse> verifierExistence(
+            @RequestParam(required = false) String ifu,
+            @RequestParam(required = false) String raisonSociale) {
+        return ResponseEntity.ok(pmService.verifierExistence(ifu, raisonSociale));
+    }
+
+    @GetMapping("/mes-fiches")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<Page<PersonneMoraleResponse>> mesFiches(
+            @RequestParam(required = false) String statut,
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(pmService.rechercherMesFiches(userId, statut, pageable));
     }
 
     @GetMapping
@@ -42,23 +67,17 @@ public class PersonneMoraleController {
             @RequestParam(required = false) String typeStructure,
             @PageableDefault(size = 10) Pageable pageable,
             @AuthenticationPrincipal Jwt jwt) {
-
-        // Extraction du rôle via l'utilitaire commun (remplace le bloc dupliqué)
         boolean isPublicOnly = JwtRoleUtils.estRolePublicUniquement(jwt);
-
         if (isPublicOnly) {
             return ResponseEntity.ok(pmService.rechercherFichesPublic(raisonSociale, entiteId, regionId, "ACTIVE", typeStructure, pageable));
         }
         return ResponseEntity.ok(pmService.rechercherFichesInterne(raisonSociale, entiteId, regionId, statut, typeStructure, pageable));
     }
 
-    // CORRIGÉ : même correctif que PersonnePhysiqueController.consulter() —
-    // bascule vers le DTO public restreint quand l'appelant est ROLE_public
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
     public ResponseEntity<?> consulter(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         boolean isPublicOnly = JwtRoleUtils.estRolePublicUniquement(jwt);
-
         if (isPublicOnly) {
             return ResponseEntity.ok(pmService.obtenirFichePourAffichagePublic(id));
         }
@@ -68,52 +87,56 @@ public class PersonneMoraleController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<PersonneMoraleResponse> modifier(
-            @PathVariable UUID id,
-            @Valid @RequestBody PersonneMoraleRequest request) {
-        return ResponseEntity.ok(pmService.modifierFiche(id, request));
+            @PathVariable UUID id, @Valid @RequestBody PersonneMoraleRequest req, @AuthenticationPrincipal Jwt jwt) {
+        PersonneMoraleResponse response = pmService.modifierFiche(id, req);
+        auditService.log(jwt, "MODIFICATION_FICHE_PM", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/soumettre")
     @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
     public ResponseEntity<PersonneMoraleResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        return ResponseEntity.ok(pmService.soumettreFiche(id, agentId));
+        PersonneMoraleResponse response = pmService.soumettreFiche(id, agentId);
+        auditService.log(jwt, "SOUMISSION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/valider")
     @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
     public ResponseEntity<PersonneMoraleResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        return ResponseEntity.ok(pmService.validerFiche(id, validateurId));
+        PersonneMoraleResponse response = pmService.validerFiche(id, validateurId);
+        auditService.log(jwt, "VALIDATION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/rejeter")
     @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
     public ResponseEntity<PersonneMoraleResponse> rejeter(
-            @PathVariable UUID id,
-            @RequestParam String motif,
-            @AuthenticationPrincipal Jwt jwt) {
+            @PathVariable UUID id, @RequestParam String motif, @AuthenticationPrincipal Jwt jwt) {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        return ResponseEntity.ok(pmService.rejeterFiche(id, motif, validateurId));
+        PersonneMoraleResponse response = pmService.rejeterFiche(id, motif, validateurId);
+        auditService.log(jwt, "REJET_FICHE", "PersonneMorale", id.toString(), motif, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/statut-judiciaire")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PersonneMoraleResponse> modifierStatutJudiciaire(
+            @PathVariable UUID id, @Valid @RequestBody StatutJudiciaireRequest req, @AuthenticationPrincipal Jwt jwt) {
+        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        PersonneMoraleResponse response = pmService.modifierStatutJudiciaireFiche(id, req, agentId);
+        auditService.log(jwt, "MODIFICATION_STATUT_JUDICIAIRE", "PersonneMorale", id.toString(),
+                "Nouveau statut : " + req.getStatutJudiciaire(), request.getRemoteAddr());
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}/archiver")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
-    public ResponseEntity<Void> archiver(@PathVariable UUID id) {
+    public ResponseEntity<Void> archiver(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         pmService.archiver(id);
+        auditService.log(jwt, "ARCHIVAGE_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
         return ResponseEntity.noContent().build();
-    }
-
-    // AJOUT : cet endpoint n'existait pas alors que PersonneMoraleServiceImpl
-    // implémente déjà modifierStatutJudiciaireFiche(). PersonnePhysiqueController
-    // avait cet endpoint, PersonneMoraleController ne l'avait pas (gap de parité).
-    @PutMapping("/{id}/statut-judiciaire")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
-    public ResponseEntity<PersonneMoraleResponse> modifierStatutJudiciaire(
-            @PathVariable UUID id,
-            @Valid @RequestBody StatutJudiciaireRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
-        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        return ResponseEntity.ok(pmService.modifierStatutJudiciaireFiche(id, request, agentId));
     }
 }

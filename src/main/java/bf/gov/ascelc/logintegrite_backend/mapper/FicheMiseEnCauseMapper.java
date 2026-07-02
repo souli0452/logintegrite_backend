@@ -7,7 +7,6 @@ import bf.gov.ascelc.logintegrite_backend.entity.PersonneMorale;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
 import org.mapstruct.*;
 
-
 @Mapper(
         componentModel = MappingConstants.ComponentModel.SPRING,
         unmappedTargetPolicy = ReportingPolicy.IGNORE,
@@ -15,7 +14,6 @@ import org.mapstruct.*;
 )
 public interface FicheMiseEnCauseMapper {
 
-    // 1. MAPPINGS POUR LE TABLEAU DE BORD (LISTE FLUIDE)
     @SubclassMapping(source = PersonnePhysique.class, target = FicheMiseEnCauseResponse.class)
     @SubclassMapping(source = PersonneMorale.class, target = FicheMiseEnCauseResponse.class)
     FicheMiseEnCauseResponse toResponse(FicheMiseEnCause fiche);
@@ -36,26 +34,22 @@ public interface FicheMiseEnCauseMapper {
     @Mapping(target = "cibleNom", source = "raisonSociale")
     FicheMiseEnCauseResponse pmToResponse(PersonneMorale pm);
 
-
-    // 2. MAPPINGS POUR LA VUE DÉTAILLÉE (ACCORDÉONS ANGULAR)
-
     @SubclassMapping(source = PersonnePhysique.class, target = FicheDetailResponse.class)
     @SubclassMapping(source = PersonneMorale.class, target = FicheDetailResponse.class)
     FicheDetailResponse toDetailResponse(FicheMiseEnCause fiche);
 
-    // ── MAPPING DÉTAILLÉ : PERSONNE PHYSIQUE ─────────────────────────────────
-
+    // CORRIGÉ : @Mapping(target = "typeFiche", constant = "PP") manquait ici
+    // (présent côté pmToDetailResponse juste en dessous). Sans lui, l'écran
+    // détail Angular recevait typeFiche = null pour toute fiche PP.
+    @Mapping(target = "typeFiche", constant = "PP")
     @Mapping(target = "entiteNom", source = "entite.nom")
     @Mapping(target = "regionNom", source = "region.nom")
     @Mapping(target = "identifiantUnique", source = "matricule")
     FicheDetailResponse ppToDetailResponse(PersonnePhysique pp);
 
-    // ── MAPPING DÉTAILLÉ : PERSONNE MORALE ───────────────────────────────────
     @Mapping(target = "typeFiche", constant = "PM")
     @Mapping(target = "entiteNom", source = "entite.nom")
     @Mapping(target = "regionNom", source = "region.nom")
     @Mapping(target = "identifiantUnique", source = "ifu")
     FicheDetailResponse pmToDetailResponse(PersonneMorale pm);
-
-
 }

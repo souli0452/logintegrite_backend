@@ -3,11 +3,13 @@ package bf.gov.ascelc.logintegrite_backend.service;
 import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
 import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.FicheMiseEnCauseResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.UUID;
 
 public interface FicheMiseEnCauseService {
 
-    // ── CONTRAT DES ENTITÉS (Pour la logique métier interne) ──
     FicheMiseEnCause consulterAvecDetails(UUID id);
     FicheMiseEnCause consulter(UUID id);
     FicheMiseEnCause soumettre(UUID id, String agentId);
@@ -15,8 +17,11 @@ public interface FicheMiseEnCauseService {
     FicheMiseEnCause rejeter(UUID id, String motif, String validateurId);
     FicheMiseEnCause archiver(UUID id);
     FicheMiseEnCause modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId);
+    FicheMiseEnCause supprimerBrouillonOuSoumise(UUID id, String userId, boolean isAdmin);
 
-    // ── CONTRAT DES DTOS (Pour l'exposition saine aux Contrôleurs) ──
+    // Recherche unifiée PP+PM pour le registre officiel
+    Page<FicheMiseEnCauseResponse> rechercherRegistreOfficiel(String recherche, UUID regionId, UUID entiteId, Pageable pageable);
+
     FicheMiseEnCauseResponse obtenirFichePourAffichage(UUID id);
     FicheMiseEnCauseResponse soumettreFiche(UUID id, String agentId);
     FicheMiseEnCauseResponse validerFiche(UUID id, String validateurId);

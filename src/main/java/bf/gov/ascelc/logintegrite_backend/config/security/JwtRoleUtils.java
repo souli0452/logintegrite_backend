@@ -12,7 +12,6 @@ public final class JwtRoleUtils {
     private JwtRoleUtils() {
     }
 
-    // Lit la liste des rôles dans realm_access.roles du token Keycloak
     @SuppressWarnings("unchecked")
     public static List<String> extraireRoles(Jwt jwt) {
         if (jwt == null || !jwt.hasClaim("realm_access")) {
@@ -27,12 +26,16 @@ public final class JwtRoleUtils {
                 .collect(Collectors.toList());
     }
 
-    // true si l'utilisateur n'a que le rôle "public", sans aucun rôle interne
     public static boolean estRolePublicUniquement(Jwt jwt) {
         List<String> roles = extraireRoles(jwt);
         return roles.contains("public")
                 && !roles.contains("ADMINISTRATEUR")
                 && !roles.contains("AGENT")
                 && !roles.contains("VALIDATEUR");
+    }
+
+
+    public static boolean estAdministrateur(Jwt jwt) {
+        return extraireRoles(jwt).contains("ADMINISTRATEUR");
     }
 }
