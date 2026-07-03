@@ -18,12 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-// SOURCE UNIQUE DE VÉRITÉ pour les transitions de statut communes à PP et PM.
-// PersonnePhysiqueServiceImpl et PersonneMoraleServiceImpl délèguent ici pour
-// soumettre/rejeter/archiver/modifierStatutJudiciaire, qui n'ont aucune règle
-// métier différenciée par type de fiche. Seul valider() reste implémenté
-// séparément dans chaque sous-service, car il porte une règle spécifique
-// (contrôle anti-doublon matricule pour PP, IFU pour PM).
 @Service
 @RequiredArgsConstructor
 public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
@@ -57,10 +51,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
         return fiche;
     }
 
-    // MODIFIÉ : délègue désormais à la machine à états de l'entité (garde
-    // BROUILLON/REJETE -> EN_ATTENTE_VALIDATION, incrémente nbSoumissions).
-    // Avant, ce chemin (utilisé par PUT /api/v1/fiches/{id}/soumettre)
-    // contournait totalement la garde métier avec un setStatutFiche brut.
     @Override
     @Transactional
     public FicheMiseEnCause soumettre(UUID id, String agentId) {
@@ -69,9 +59,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
         return ficheRepo.save(f);
     }
 
-    // Reste bloqué : la validation porte une règle anti-doublon différente
-    // selon le type de fiche (matricule pour PP, IFU pour PM), impossible à
-    // exécuter correctement sur le type abstrait FicheMiseEnCause.
     @Override
     @Transactional
     public FicheMiseEnCause valider(UUID id, String validateurId) {
@@ -80,8 +67,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
                         + "qui appliquent le contrôle anti-doublon du registre officiel.");
     }
 
-    // MODIFIÉ : délègue à la machine à états (garde EN_ATTENTE_VALIDATION,
-    // fixe motifRejet/validateurId/dateValidation de façon cohérente).
     @Override
     @Transactional
     public FicheMiseEnCause rejeter(UUID id, String motif, String validateurId) {
@@ -90,8 +75,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
         return ficheRepo.save(f);
     }
 
-    // MODIFIÉ : délègue à la machine à états (garde ACTIVE/REJETE avant
-    // archivage — empêche d'archiver un brouillon jamais validé).
     @Override
     @Transactional
     public FicheMiseEnCause archiver(UUID id) {
@@ -100,10 +83,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
         return ficheRepo.save(f);
     }
 
-    // MODIFIÉ : route désormais systématiquement par HistoriqueStatutService,
-    // pour que chaque changement de statut judiciaire (PP comme PM, quel que
-    // soit le contrôleur d'entrée) laisse une trace dans historique_statut,
-    // comme le prévoit la Phase 1 de la consigne métier.
     @Override
     @Transactional
     public FicheMiseEnCause modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId) {
@@ -158,8 +137,18 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
                 .map(ficheMapper::toResponse);
     }
 
+    // AJOUT : implémentation — réutilise rechercheGlobale (déjà présente
+    // dans le repository, jusque-là inutilisée) filtrée sur EN_ATTENTE_VALIDATION.
+    @Override
+    @Transactional(readOnly = true)
+    public Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable) {
+        return ficheRepo.rechercheGlobale(entiteId, regionId, "EN_ATTENTE_VALIDATION", pageable)
+                .map(ficheMapper::toResponse);
+    }
+
     @Override
     public long countEnAttente() {
+
         return ficheRepo.countByStatutFiche("EN_ATTENTE_VALIDATION");
     }
 

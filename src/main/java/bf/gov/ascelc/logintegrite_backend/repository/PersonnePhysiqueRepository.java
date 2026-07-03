@@ -22,6 +22,11 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
     Optional<PersonnePhysique> findWithRelationsById(UUID id);
 
     @EntityGraph(attributePaths = {"entite", "region"})
+    @Query("SELECT p FROM PersonnePhysique p WHERE p.validateurId = :validateurId AND " +
+            "p.statutFiche IN ('ACTIVE', 'REJETE') ORDER BY p.dateValidation DESC")
+    List<PersonnePhysique> findRecentesByValidateur(@Param("validateurId") String validateurId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
     @Override
     List<PersonnePhysique> findAll();
 
@@ -32,12 +37,15 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
 
     long countByStatutFiche(String statutFiche);
 
+    // CORRIGÉ : c'est CETTE requête qui produisait "function lower(bytea) does
+    // not exist" — le paramètre :nom, utilisé dans LOWER(CONCAT(...)) sans
+    // jamais être casté, était parfois lié à null (recherche sans filtre nom).
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT p FROM PersonnePhysique p WHERE " +
-            "(:nom IS NULL OR LOWER(p.nom) LIKE LOWER(CONCAT('%', :nom, '%')) OR LOWER(p.prenoms) LIKE LOWER(CONCAT('%', :nom, '%'))) AND " +
+            "(CAST(:nom AS text) IS NULL OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:nom AS text), '%')) OR LOWER(p.prenoms) LIKE LOWER(CONCAT('%', CAST(:nom AS text), '%'))) AND " +
             "(:entiteId IS NULL OR p.entite.id = :entiteId) AND " +
             "(:regionId IS NULL OR p.region.id = :regionId) AND " +
-            "(:statut IS NULL OR p.statutFiche = :statut)")
+            "(CAST(:statut AS text) IS NULL OR p.statutFiche = :statut)")
     Page<PersonnePhysique> rechercheAvancee(
             @Param("nom") String nom,
             @Param("entiteId") UUID entiteId,
@@ -55,21 +63,24 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
             @Param("prenoms") String prenoms,
             @Param("dateNaissance") LocalDate dateNaissance);
 
+    // CORRIGÉ : CAST(:statut AS text)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT p FROM PersonnePhysique p WHERE p.createdById = :createdById AND " +
-            "(:statut IS NULL OR p.statutFiche = :statut)")
+            "(CAST(:statut AS text) IS NULL OR p.statutFiche = :statut)")
     Page<PersonnePhysique> rechercheMesFiches(
             @Param("createdById") String createdById,
             @Param("statut") String statut,
             Pageable pageable);
 
+    // CORRIGÉ : CAST(:dateDebut/:dateFin AS timestamp) — appelée par
+    // /statistiques pour le camembert PP/PM, même bug que countTotalFiltre
     @Query("SELECT COUNT(DISTINCT p) FROM PersonnePhysique p " +
             "LEFT JOIN p.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR p.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR p.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR p.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR p.createdAt <= :dateFin)")
+            "(CAST(:dateDebut AS timestamp) IS NULL OR p.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR p.createdAt <= :dateFin)")
     long countFiltre(
             @Param("regionId") UUID regionId,
             @Param("entiteId") UUID entiteId,

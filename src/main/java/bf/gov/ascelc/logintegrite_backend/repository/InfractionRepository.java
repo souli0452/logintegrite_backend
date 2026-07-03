@@ -21,8 +21,8 @@ public interface InfractionRepository extends JpaRepository<Infraction, UUID> {
             "JOIN i.fiche f LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
-            "(:dateDebut IS NULL OR i.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR i.createdAt <= :dateFin) " +
+            "(CAST(:dateDebut AS timestamp) IS NULL OR i.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR i.createdAt <= :dateFin) " +
             "GROUP BY COALESCE(ti.libelle, i.nature) ORDER BY COUNT(i) DESC")
     List<Object[]> countGroupByTypeInfraction(
             @Param("regionId") UUID regionId,

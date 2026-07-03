@@ -17,11 +17,14 @@ public final class ApiURLs {
     public static final String FICHES_ARCHIVER = "/{id}/archiver";
     public static final String FICHES_STATUT_JUDICIAIRE = "/{id}/statut-judiciaire";
 
-    // Registre officiel : recherche unifiée PP+PM (voir FicheMiseEnCauseController)
     public static final String FICHES_RECHERCHE = "/recherche";
-
-    // "Mes actions récentes" — dashboard
     public static final String FICHES_MES_ACTIONS_RECENTES = "/mes-actions-recentes";
+
+    // AJOUT : file d'attente de validation (EN_ATTENTE_VALIDATION, tous créateurs)
+    public static final String FICHES_A_VALIDER = "/a-valider";
+
+    // AJOUT : actions rapides du validateur (fiches qu'IL a validées/rejetées)
+    public static final String FICHES_MES_ACTIONS_VALIDATEUR = "/mes-actions-validateur";
 
     public static final String PERSONNES_MORALES = API_V1_ROOT + "/personnes-morales";
     public static final String PERSONNES_MORALES_RECHERCHE = "/recherche";

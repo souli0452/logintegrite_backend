@@ -61,6 +61,17 @@ public class PersonnePhysiqueController {
         return ResponseEntity.ok(ppService.rechercherMesFiches(userId, statut, pageable));
     }
 
+    // MODIFIÉ : cloisonnement des fiches non actives. Avant, un agent ou un
+    // validateur pouvait appeler cet endpoint avec n'importe quel statut
+    // (ex. ?statut=BROUILLON) et voir les fiches de TOUS les créateurs — la
+    // consigne métier ("une fiche créée par un agent est personnelle") n'était
+    // donc pas réellement appliquée, seulement contournable via /mes-fiches.
+    // Règle désormais appliquée :
+    //   - rôle public          -> ACTIVE uniquement (inchangé)
+    //   - administrateur       -> aucune restriction (supervision globale)
+    //   - validateur seul + statut=EN_ATTENTE_VALIDATION -> file de validation complète
+    //   - statut=ACTIVE (registre officiel) -> jamais restreint, visible par tout rôle interne
+    //   - tout le reste (agent, ou validateur hors file d'attente) -> uniquement ses propres fiches
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
     public ResponseEntity<Page<?>> rechercher(
@@ -74,6 +85,19 @@ public class PersonnePhysiqueController {
         if (isPublicOnly) {
             return ResponseEntity.ok(ppService.rechercherFichesPublic(nom, entiteId, regionId, "ACTIVE", pageable));
         }
+
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        if (!isAdmin) {
+            boolean isValidateurOnly = JwtRoleUtils.estValidateurUniquement(jwt);
+            boolean demandeFileValidation = isValidateurOnly && "EN_ATTENTE_VALIDATION".equals(statut);
+            boolean demandeRegistreActif = "ACTIVE".equals(statut);
+
+            if (!demandeFileValidation && !demandeRegistreActif) {
+                String userId = jwt.getSubject();
+                return ResponseEntity.ok(ppService.rechercherMesFiches(userId, statut, pageable));
+            }
+        }
+
         return ResponseEntity.ok(ppService.rechercherFichesInterne(nom, entiteId, regionId, statut, pageable));
     }
 

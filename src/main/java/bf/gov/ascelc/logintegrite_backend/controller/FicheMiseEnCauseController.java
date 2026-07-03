@@ -66,11 +66,28 @@ public class FicheMiseEnCauseController {
             return ResponseEntity.ok(Collections.emptyList());
         }
 
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        boolean isValidateurOnly = JwtRoleUtils.estValidateurUniquement(jwt);
+
         List<FicheMiseEnCauseResponse> responses = new ArrayList<>();
-        responses.addAll(ppService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
-        responses.addAll(pmService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
+
+        if (isAdmin) {
+            // Supervision complète : toutes les fiches, tous statuts, tous créateurs
+            responses.addAll(ppService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
+            responses.addAll(pmService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
+        } else if (isValidateurOnly) {
+            // File d'attente de validation uniquement, tous créateurs confondus
+            responses.addAll(ficheService.rechercherFileAttenteValidation(null, null, Pageable.unpaged()).getContent());
+        } else {
+            // Agent : uniquement ses propres fiches, tous statuts confondus
+            String userId = jwt.getSubject();
+            responses.addAll(ppService.rechercherMesFiches(userId, null, Pageable.unpaged()).getContent());
+            responses.addAll(pmService.rechercherMesFiches(userId, null, Pageable.unpaged()).getContent());
+        }
+
         return ResponseEntity.ok(responses);
     }
+
 
     // AJOUT (registre officiel) : recherche unifiée PP+PM, fiches ACTIVE
     // uniquement, pagination fiable côté SQL. Visible par tous les rôles y
@@ -123,6 +140,38 @@ public class FicheMiseEnCauseController {
         FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.soumettre(id, agentId));
         auditService.log(jwt, "SOUMISSION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping(ApiURLs.FICHES_A_VALIDER)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR', 'ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Page<FicheMiseEnCauseResponse>> fileAttenteValidation(
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID entiteId,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ficheService.rechercherFileAttenteValidation(regionId, entiteId, pageable));
+    }
+
+    // AJOUT : "actions rapides" du validateur — les 5 dernières fiches
+    // (PP+PM) qu'IL a lui-même validées ou rejetées, triées par date de
+    // décision décroissante.
+    @GetMapping(ApiURLs.FICHES_MES_ACTIONS_VALIDATEUR)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<List<FicheMiseEnCauseResponse>> mesActionsValidateur(@AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+
+        List<FicheMiseEnCauseResponse> combinees = new ArrayList<>();
+        combinees.addAll(ppService.listerRecentesValideesOuRejeteesParValidateur(validateurId, 5).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+        combinees.addAll(pmService.listerRecentesValideesOuRejeteesParValidateur(validateurId, 5).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+
+        List<FicheMiseEnCauseResponse> cinqPlusRecentes = combinees.stream()
+                .sorted(Comparator.comparing(FicheMiseEnCauseResponse::getDateModification,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(5)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(cinqPlusRecentes);
     }
 
     // Route vers le service spécialisé selon le type réel de la fiche, pour

@@ -21,18 +21,25 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
     Optional<PersonneMorale> findWithRelationsById(UUID id);
 
     @EntityGraph(attributePaths = {"entite", "region"})
+    @Query("SELECT m FROM PersonneMorale m WHERE m.validateurId = :validateurId AND " +
+            "m.statutFiche IN ('ACTIVE', 'REJETE') ORDER BY m.dateValidation DESC")
+    List<PersonneMorale> findRecentesByValidateur(@Param("validateurId") String validateurId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
     @Override
     List<PersonneMorale> findAll();
 
     long countByStatutFiche(String statutFiche);
 
+    // CORRIGÉ : même bug que côté PP (LOWER/CONCAT sur raisonSociale + statut
+    // et typeStructure comparés directement, tous vulnérables sans CAST)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT m FROM PersonneMorale m WHERE " +
-            "(:raisonSociale IS NULL OR LOWER(m.raisonSociale) LIKE LOWER(CONCAT('%', :raisonSociale, '%'))) AND " +
+            "(CAST(:raisonSociale AS text) IS NULL OR LOWER(m.raisonSociale) LIKE LOWER(CONCAT('%', CAST(:raisonSociale AS text), '%'))) AND " +
             "(:entiteId IS NULL OR m.entite.id = :entiteId) AND " +
             "(:regionId IS NULL OR m.region.id = :regionId) AND " +
-            "(:statut IS NULL OR m.statutFiche = :statut) AND " +
-            "(:typeStructure IS NULL OR m.typeStructure = :typeStructure)")
+            "(CAST(:statut AS text) IS NULL OR m.statutFiche = :statut) AND " +
+            "(CAST(:typeStructure AS text) IS NULL OR m.typeStructure = :typeStructure)")
     Page<PersonneMorale> rechercheAvancee(
             @Param("raisonSociale") String raisonSociale,
             @Param("entiteId") UUID entiteId,
@@ -47,21 +54,24 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
     @Query("SELECT m FROM PersonneMorale m WHERE m.statutFiche = 'ACTIVE' AND LOWER(m.raisonSociale) = LOWER(:raisonSociale)")
     Optional<PersonneMorale> findActiveByRaisonSociale(@Param("raisonSociale") String raisonSociale);
 
+    // CORRIGÉ : CAST(:statut AS text)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT m FROM PersonneMorale m WHERE m.createdById = :createdById AND " +
-            "(:statut IS NULL OR m.statutFiche = :statut)")
+            "(CAST(:statut AS text) IS NULL OR m.statutFiche = :statut)")
     Page<PersonneMorale> rechercheMesFiches(
             @Param("createdById") String createdById,
             @Param("statut") String statut,
             Pageable pageable);
 
+    // CORRIGÉ : CAST(:dateDebut/:dateFin AS timestamp) — c'est l'autre moitié
+    // du camembert PP/PM appelé par /statistiques
     @Query("SELECT COUNT(DISTINCT m) FROM PersonneMorale m " +
             "LEFT JOIN m.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR m.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR m.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR m.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR m.createdAt <= :dateFin)")
+            "(CAST(:dateDebut AS timestamp) IS NULL OR m.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR m.createdAt <= :dateFin)")
     long countFiltre(
             @Param("regionId") UUID regionId,
             @Param("entiteId") UUID entiteId,

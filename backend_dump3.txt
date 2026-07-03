@@ -263,9 +263,19 @@ public final class JwtRoleUtils {
                 && !roles.contains("VALIDATEUR");
     }
 
-
     public static boolean estAdministrateur(Jwt jwt) {
         return extraireRoles(jwt).contains("ADMINISTRATEUR");
+    }
+
+    // AJOUT : détecte un utilisateur qui n'a QUE le rôle VALIDATEUR (pas
+    // cumulé avec AGENT ou ADMINISTRATEUR). Sert à distinguer sa file
+    // d'attente de validation (accès large, tous créateurs) du reste des
+    // accès (restreints à ses propres données, comme un agent).
+    public static boolean estValidateurUniquement(Jwt jwt) {
+        List<String> roles = extraireRoles(jwt);
+        return roles.contains("VALIDATEUR")
+                && !roles.contains("ADMINISTRATEUR")
+                && !roles.contains("AGENT");
     }
 }
 
@@ -566,11 +576,28 @@ public class FicheMiseEnCauseController {
             return ResponseEntity.ok(Collections.emptyList());
         }
 
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        boolean isValidateurOnly = JwtRoleUtils.estValidateurUniquement(jwt);
+
         List<FicheMiseEnCauseResponse> responses = new ArrayList<>();
-        responses.addAll(ppService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
-        responses.addAll(pmService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
+
+        if (isAdmin) {
+            // Supervision complète : toutes les fiches, tous statuts, tous créateurs
+            responses.addAll(ppService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
+            responses.addAll(pmService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
+        } else if (isValidateurOnly) {
+            // File d'attente de validation uniquement, tous créateurs confondus
+            responses.addAll(ficheService.rechercherFileAttenteValidation(null, null, Pageable.unpaged()).getContent());
+        } else {
+            // Agent : uniquement ses propres fiches, tous statuts confondus
+            String userId = jwt.getSubject();
+            responses.addAll(ppService.rechercherMesFiches(userId, null, Pageable.unpaged()).getContent());
+            responses.addAll(pmService.rechercherMesFiches(userId, null, Pageable.unpaged()).getContent());
+        }
+
         return ResponseEntity.ok(responses);
     }
+
 
     // AJOUT (registre officiel) : recherche unifiée PP+PM, fiches ACTIVE
     // uniquement, pagination fiable côté SQL. Visible par tous les rôles y
@@ -623,6 +650,38 @@ public class FicheMiseEnCauseController {
         FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.soumettre(id, agentId));
         auditService.log(jwt, "SOUMISSION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping(ApiURLs.FICHES_A_VALIDER)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR', 'ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Page<FicheMiseEnCauseResponse>> fileAttenteValidation(
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID entiteId,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ficheService.rechercherFileAttenteValidation(regionId, entiteId, pageable));
+    }
+
+    // AJOUT : "actions rapides" du validateur — les 5 dernières fiches
+    // (PP+PM) qu'IL a lui-même validées ou rejetées, triées par date de
+    // décision décroissante.
+    @GetMapping(ApiURLs.FICHES_MES_ACTIONS_VALIDATEUR)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<List<FicheMiseEnCauseResponse>> mesActionsValidateur(@AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+
+        List<FicheMiseEnCauseResponse> combinees = new ArrayList<>();
+        combinees.addAll(ppService.listerRecentesValideesOuRejeteesParValidateur(validateurId, 5).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+        combinees.addAll(pmService.listerRecentesValideesOuRejeteesParValidateur(validateurId, 5).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+
+        List<FicheMiseEnCauseResponse> cinqPlusRecentes = combinees.stream()
+                .sorted(Comparator.comparing(FicheMiseEnCauseResponse::getDateModification,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(5)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(cinqPlusRecentes);
     }
 
     // Route vers le service spécialisé selon le type réel de la fiche, pour
@@ -765,14 +824,17 @@ public class InfractionController {
     private final HistoriqueStatutService historiqueStatutService; // AJOUT
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<InfractionResponse> create(@Valid @RequestBody InfractionRequest request) {
         return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<InfractionResponse> update(@PathVariable UUID id, @Valid @RequestBody InfractionRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<InfractionResponse> getById(@PathVariable UUID id) {
@@ -935,6 +997,8 @@ public class PersonneMoraleController {
         return ResponseEntity.ok(pmService.rechercherMesFiches(userId, statut, pageable));
     }
 
+    // MODIFIÉ : même cloisonnement que PersonnePhysiqueController.rechercher()
+    // — voir le commentaire détaillé là-bas.
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
     public ResponseEntity<Page<?>> rechercher(
@@ -949,6 +1013,19 @@ public class PersonneMoraleController {
         if (isPublicOnly) {
             return ResponseEntity.ok(pmService.rechercherFichesPublic(raisonSociale, entiteId, regionId, "ACTIVE", typeStructure, pageable));
         }
+
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        if (!isAdmin) {
+            boolean isValidateurOnly = JwtRoleUtils.estValidateurUniquement(jwt);
+            boolean demandeFileValidation = isValidateurOnly && "EN_ATTENTE_VALIDATION".equals(statut);
+            boolean demandeRegistreActif = "ACTIVE".equals(statut);
+
+            if (!demandeFileValidation && !demandeRegistreActif) {
+                String userId = jwt.getSubject();
+                return ResponseEntity.ok(pmService.rechercherMesFiches(userId, statut, pageable));
+            }
+        }
+
         return ResponseEntity.ok(pmService.rechercherFichesInterne(raisonSociale, entiteId, regionId, statut, typeStructure, pageable));
     }
 
@@ -1083,6 +1160,17 @@ public class PersonnePhysiqueController {
         return ResponseEntity.ok(ppService.rechercherMesFiches(userId, statut, pageable));
     }
 
+    // MODIFIÉ : cloisonnement des fiches non actives. Avant, un agent ou un
+    // validateur pouvait appeler cet endpoint avec n'importe quel statut
+    // (ex. ?statut=BROUILLON) et voir les fiches de TOUS les créateurs — la
+    // consigne métier ("une fiche créée par un agent est personnelle") n'était
+    // donc pas réellement appliquée, seulement contournable via /mes-fiches.
+    // Règle désormais appliquée :
+    //   - rôle public          -> ACTIVE uniquement (inchangé)
+    //   - administrateur       -> aucune restriction (supervision globale)
+    //   - validateur seul + statut=EN_ATTENTE_VALIDATION -> file de validation complète
+    //   - statut=ACTIVE (registre officiel) -> jamais restreint, visible par tout rôle interne
+    //   - tout le reste (agent, ou validateur hors file d'attente) -> uniquement ses propres fiches
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
     public ResponseEntity<Page<?>> rechercher(
@@ -1096,6 +1184,19 @@ public class PersonnePhysiqueController {
         if (isPublicOnly) {
             return ResponseEntity.ok(ppService.rechercherFichesPublic(nom, entiteId, regionId, "ACTIVE", pageable));
         }
+
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        if (!isAdmin) {
+            boolean isValidateurOnly = JwtRoleUtils.estValidateurUniquement(jwt);
+            boolean demandeFileValidation = isValidateurOnly && "EN_ATTENTE_VALIDATION".equals(statut);
+            boolean demandeRegistreActif = "ACTIVE".equals(statut);
+
+            if (!demandeFileValidation && !demandeRegistreActif) {
+                String userId = jwt.getSubject();
+                return ResponseEntity.ok(ppService.rechercherMesFiches(userId, statut, pageable));
+            }
+        }
+
         return ResponseEntity.ok(ppService.rechercherFichesInterne(nom, entiteId, regionId, statut, pageable));
     }
 
@@ -1195,6 +1296,7 @@ public class PieceJointeController {
 
     // MODIFIÉ : infractionId ajouté en paramètre optionnel
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<PieceJointeResponse> uploadFichier(
             @RequestParam(value = "ficheId", required = false) UUID ficheId,
             @RequestParam(value = "infractionId", required = false) UUID infractionId,
@@ -1203,11 +1305,13 @@ public class PieceJointeController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<PieceJointeResponse> create(@Valid @RequestBody PieceJointeRequest request) {
         return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<PieceJointeResponse> update(@PathVariable UUID id, @Valid @RequestBody PieceJointeRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
@@ -2024,8 +2128,10 @@ public class StatistiqueRequest {
     private UUID entiteId;
     private UUID typeInfractionId;
 
+
     // Axe de l'histogramme paramétrable : "REGION" (défaut), "ENTITE", "INFRACTION"
     private String groupBy;
+    private String statut;
 }
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/dto/request/StatutJudiciaireReferentielRequest.java =====
@@ -3791,39 +3897,44 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
 
     long countByStatutFiche(String statutFiche);
 
+    // CORRIGÉ : CAST(:statut AS text) IS NULL — le paramètre statut, en String,
+    // était sujet au même bug de type indéterminé côté PostgreSQL que dateDebut/dateFin
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT f FROM FicheMiseEnCause f WHERE " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
-            "(:statut IS NULL OR f.statutFiche = :statut)")
+            "(CAST(:statut AS text) IS NULL OR f.statutFiche = :statut)")
     Page<FicheMiseEnCause> rechercheGlobale(
             @Param("entiteId") UUID entiteId,
             @Param("regionId") UUID regionId,
             @Param("statut") String statut,
             Pageable pageable);
 
-    // Registre officiel : recherche unifiée PP+PM avec pagination fiable
+    // CORRIGÉ : CAST(:recherche AS text) — même bug que "function lower(bytea)
+    // does not exist" ci-dessous, appliqué ici en amont, avant même qu'il se déclenche
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT f FROM FicheMiseEnCause f WHERE f.statutFiche = 'ACTIVE' AND " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
-            "(:recherche IS NULL OR :recherche = '' OR " +
-            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).nom, '')) LIKE LOWER(CONCAT('%', :recherche, '%')) OR " +
-            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).prenoms, '')) LIKE LOWER(CONCAT('%', :recherche, '%')) OR " +
-            "   LOWER(COALESCE(TREAT(f AS PersonneMorale).raisonSociale, '')) LIKE LOWER(CONCAT('%', :recherche, '%')))")
+            "(CAST(:recherche AS text) IS NULL OR :recherche = '' OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).nom, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).prenoms, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonneMorale).raisonSociale, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')))")
     Page<FicheMiseEnCause> rechercheRegistreOfficiel(
             @Param("regionId") UUID regionId,
             @Param("entiteId") UUID entiteId,
             @Param("recherche") String recherche,
             Pageable pageable);
 
+    // CORRIGÉ : CAST(:dateDebut AS timestamp) / CAST(:dateFin AS timestamp)
+    // — c'est exactement la requête de ta stack trace (paramètre $7)
     @Query("SELECT COUNT(DISTINCT f) FROM FicheMiseEnCause f " +
             "LEFT JOIN f.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin)")
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin)")
     long countTotalFiltre(
             @Param("regionId") UUID regionId,
             @Param("entiteId") UUID entiteId,
@@ -3837,8 +3948,8 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin)")
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin)")
     long countByStatutFiltre(
             @Param("statut") String statut,
             @Param("regionId") UUID regionId,
@@ -3851,8 +3962,8 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
             "LEFT JOIN f.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin) " +
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin) " +
             "GROUP BY r.nom ORDER BY COUNT(DISTINCT f) DESC")
     List<Object[]> countGroupByRegion(
             @Param("entiteId") UUID entiteId,
@@ -3864,8 +3975,8 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
             "LEFT JOIN f.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin) " +
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin) " +
             "GROUP BY e.nom ORDER BY COUNT(DISTINCT f) DESC")
     List<Object[]> countGroupByEntite(
             @Param("regionId") UUID regionId,
@@ -3876,8 +3987,8 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
     @Query("SELECT f.statutJudiciaire, COUNT(f) FROM FicheMiseEnCause f WHERE " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin) " +
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin) " +
             "GROUP BY f.statutJudiciaire")
     List<Object[]> countGroupByStatutJudiciaire(
             @Param("regionId") UUID regionId,
@@ -3928,8 +4039,8 @@ public interface InfractionRepository extends JpaRepository<Infraction, UUID> {
             "JOIN i.fiche f LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
-            "(:dateDebut IS NULL OR i.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR i.createdAt <= :dateFin) " +
+            "(CAST(:dateDebut AS timestamp) IS NULL OR i.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR i.createdAt <= :dateFin) " +
             "GROUP BY COALESCE(ti.libelle, i.nature) ORDER BY COUNT(i) DESC")
     List<Object[]> countGroupByTypeInfraction(
             @Param("regionId") UUID regionId,
@@ -4002,18 +4113,25 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
     Optional<PersonneMorale> findWithRelationsById(UUID id);
 
     @EntityGraph(attributePaths = {"entite", "region"})
+    @Query("SELECT m FROM PersonneMorale m WHERE m.validateurId = :validateurId AND " +
+            "m.statutFiche IN ('ACTIVE', 'REJETE') ORDER BY m.dateValidation DESC")
+    List<PersonneMorale> findRecentesByValidateur(@Param("validateurId") String validateurId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
     @Override
     List<PersonneMorale> findAll();
 
     long countByStatutFiche(String statutFiche);
 
+    // CORRIGÉ : même bug que côté PP (LOWER/CONCAT sur raisonSociale + statut
+    // et typeStructure comparés directement, tous vulnérables sans CAST)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT m FROM PersonneMorale m WHERE " +
-            "(:raisonSociale IS NULL OR LOWER(m.raisonSociale) LIKE LOWER(CONCAT('%', :raisonSociale, '%'))) AND " +
+            "(CAST(:raisonSociale AS text) IS NULL OR LOWER(m.raisonSociale) LIKE LOWER(CONCAT('%', CAST(:raisonSociale AS text), '%'))) AND " +
             "(:entiteId IS NULL OR m.entite.id = :entiteId) AND " +
             "(:regionId IS NULL OR m.region.id = :regionId) AND " +
-            "(:statut IS NULL OR m.statutFiche = :statut) AND " +
-            "(:typeStructure IS NULL OR m.typeStructure = :typeStructure)")
+            "(CAST(:statut AS text) IS NULL OR m.statutFiche = :statut) AND " +
+            "(CAST(:typeStructure AS text) IS NULL OR m.typeStructure = :typeStructure)")
     Page<PersonneMorale> rechercheAvancee(
             @Param("raisonSociale") String raisonSociale,
             @Param("entiteId") UUID entiteId,
@@ -4028,21 +4146,24 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
     @Query("SELECT m FROM PersonneMorale m WHERE m.statutFiche = 'ACTIVE' AND LOWER(m.raisonSociale) = LOWER(:raisonSociale)")
     Optional<PersonneMorale> findActiveByRaisonSociale(@Param("raisonSociale") String raisonSociale);
 
+    // CORRIGÉ : CAST(:statut AS text)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT m FROM PersonneMorale m WHERE m.createdById = :createdById AND " +
-            "(:statut IS NULL OR m.statutFiche = :statut)")
+            "(CAST(:statut AS text) IS NULL OR m.statutFiche = :statut)")
     Page<PersonneMorale> rechercheMesFiches(
             @Param("createdById") String createdById,
             @Param("statut") String statut,
             Pageable pageable);
 
+    // CORRIGÉ : CAST(:dateDebut/:dateFin AS timestamp) — c'est l'autre moitié
+    // du camembert PP/PM appelé par /statistiques
     @Query("SELECT COUNT(DISTINCT m) FROM PersonneMorale m " +
             "LEFT JOIN m.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR m.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR m.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR m.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR m.createdAt <= :dateFin)")
+            "(CAST(:dateDebut AS timestamp) IS NULL OR m.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR m.createdAt <= :dateFin)")
     long countFiltre(
             @Param("regionId") UUID regionId,
             @Param("entiteId") UUID entiteId,
@@ -4081,6 +4202,11 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
     Optional<PersonnePhysique> findWithRelationsById(UUID id);
 
     @EntityGraph(attributePaths = {"entite", "region"})
+    @Query("SELECT p FROM PersonnePhysique p WHERE p.validateurId = :validateurId AND " +
+            "p.statutFiche IN ('ACTIVE', 'REJETE') ORDER BY p.dateValidation DESC")
+    List<PersonnePhysique> findRecentesByValidateur(@Param("validateurId") String validateurId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
     @Override
     List<PersonnePhysique> findAll();
 
@@ -4091,12 +4217,15 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
 
     long countByStatutFiche(String statutFiche);
 
+    // CORRIGÉ : c'est CETTE requête qui produisait "function lower(bytea) does
+    // not exist" — le paramètre :nom, utilisé dans LOWER(CONCAT(...)) sans
+    // jamais être casté, était parfois lié à null (recherche sans filtre nom).
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT p FROM PersonnePhysique p WHERE " +
-            "(:nom IS NULL OR LOWER(p.nom) LIKE LOWER(CONCAT('%', :nom, '%')) OR LOWER(p.prenoms) LIKE LOWER(CONCAT('%', :nom, '%'))) AND " +
+            "(CAST(:nom AS text) IS NULL OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:nom AS text), '%')) OR LOWER(p.prenoms) LIKE LOWER(CONCAT('%', CAST(:nom AS text), '%'))) AND " +
             "(:entiteId IS NULL OR p.entite.id = :entiteId) AND " +
             "(:regionId IS NULL OR p.region.id = :regionId) AND " +
-            "(:statut IS NULL OR p.statutFiche = :statut)")
+            "(CAST(:statut AS text) IS NULL OR p.statutFiche = :statut)")
     Page<PersonnePhysique> rechercheAvancee(
             @Param("nom") String nom,
             @Param("entiteId") UUID entiteId,
@@ -4114,21 +4243,24 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
             @Param("prenoms") String prenoms,
             @Param("dateNaissance") LocalDate dateNaissance);
 
+    // CORRIGÉ : CAST(:statut AS text)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT p FROM PersonnePhysique p WHERE p.createdById = :createdById AND " +
-            "(:statut IS NULL OR p.statutFiche = :statut)")
+            "(CAST(:statut AS text) IS NULL OR p.statutFiche = :statut)")
     Page<PersonnePhysique> rechercheMesFiches(
             @Param("createdById") String createdById,
             @Param("statut") String statut,
             Pageable pageable);
 
+    // CORRIGÉ : CAST(:dateDebut/:dateFin AS timestamp) — appelée par
+    // /statistiques pour le camembert PP/PM, même bug que countTotalFiltre
     @Query("SELECT COUNT(DISTINCT p) FROM PersonnePhysique p " +
             "LEFT JOIN p.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR p.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR p.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR p.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR p.createdAt <= :dateFin)")
+            "(CAST(:dateDebut AS timestamp) IS NULL OR p.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR p.createdAt <= :dateFin)")
     long countFiltre(
             @Param("regionId") UUID regionId,
             @Param("entiteId") UUID entiteId,
@@ -4280,8 +4412,12 @@ public interface FicheMiseEnCauseService {
     FicheMiseEnCause modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId);
     FicheMiseEnCause supprimerBrouillonOuSoumise(UUID id, String userId, boolean isAdmin);
 
-    // Recherche unifiée PP+PM pour le registre officiel
     Page<FicheMiseEnCauseResponse> rechercherRegistreOfficiel(String recherche, UUID regionId, UUID entiteId, Pageable pageable);
+
+    // AJOUT : file d'attente de validation — fiches EN_ATTENTE_VALIDATION,
+    // PP+PM confondus, tous créateurs confondus. Réutilise la requête
+    // rechercheGlobale déjà présente dans FicheMiseEnCauseRepository.
+    Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable);
 
     FicheMiseEnCauseResponse obtenirFichePourAffichage(UUID id);
     FicheMiseEnCauseResponse soumettreFiche(UUID id, String agentId);
@@ -4434,12 +4570,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-// SOURCE UNIQUE DE VÉRITÉ pour les transitions de statut communes à PP et PM.
-// PersonnePhysiqueServiceImpl et PersonneMoraleServiceImpl délèguent ici pour
-// soumettre/rejeter/archiver/modifierStatutJudiciaire, qui n'ont aucune règle
-// métier différenciée par type de fiche. Seul valider() reste implémenté
-// séparément dans chaque sous-service, car il porte une règle spécifique
-// (contrôle anti-doublon matricule pour PP, IFU pour PM).
 @Service
 @RequiredArgsConstructor
 public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
@@ -4473,10 +4603,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
         return fiche;
     }
 
-    // MODIFIÉ : délègue désormais à la machine à états de l'entité (garde
-    // BROUILLON/REJETE -> EN_ATTENTE_VALIDATION, incrémente nbSoumissions).
-    // Avant, ce chemin (utilisé par PUT /api/v1/fiches/{id}/soumettre)
-    // contournait totalement la garde métier avec un setStatutFiche brut.
     @Override
     @Transactional
     public FicheMiseEnCause soumettre(UUID id, String agentId) {
@@ -4485,9 +4611,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
         return ficheRepo.save(f);
     }
 
-    // Reste bloqué : la validation porte une règle anti-doublon différente
-    // selon le type de fiche (matricule pour PP, IFU pour PM), impossible à
-    // exécuter correctement sur le type abstrait FicheMiseEnCause.
     @Override
     @Transactional
     public FicheMiseEnCause valider(UUID id, String validateurId) {
@@ -4496,8 +4619,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
                         + "qui appliquent le contrôle anti-doublon du registre officiel.");
     }
 
-    // MODIFIÉ : délègue à la machine à états (garde EN_ATTENTE_VALIDATION,
-    // fixe motifRejet/validateurId/dateValidation de façon cohérente).
     @Override
     @Transactional
     public FicheMiseEnCause rejeter(UUID id, String motif, String validateurId) {
@@ -4506,8 +4627,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
         return ficheRepo.save(f);
     }
 
-    // MODIFIÉ : délègue à la machine à états (garde ACTIVE/REJETE avant
-    // archivage — empêche d'archiver un brouillon jamais validé).
     @Override
     @Transactional
     public FicheMiseEnCause archiver(UUID id) {
@@ -4516,10 +4635,6 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
         return ficheRepo.save(f);
     }
 
-    // MODIFIÉ : route désormais systématiquement par HistoriqueStatutService,
-    // pour que chaque changement de statut judiciaire (PP comme PM, quel que
-    // soit le contrôleur d'entrée) laisse une trace dans historique_statut,
-    // comme le prévoit la Phase 1 de la consigne métier.
     @Override
     @Transactional
     public FicheMiseEnCause modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId) {
@@ -4574,8 +4689,18 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
                 .map(ficheMapper::toResponse);
     }
 
+    // AJOUT : implémentation — réutilise rechercheGlobale (déjà présente
+    // dans le repository, jusque-là inutilisée) filtrée sur EN_ATTENTE_VALIDATION.
+    @Override
+    @Transactional(readOnly = true)
+    public Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable) {
+        return ficheRepo.rechercheGlobale(entiteId, regionId, "EN_ATTENTE_VALIDATION", pageable)
+                .map(ficheMapper::toResponse);
+    }
+
     @Override
     public long countEnAttente() {
+
         return ficheRepo.countByStatutFiche("EN_ATTENTE_VALIDATION");
     }
 
@@ -5088,6 +5213,18 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable) {
+        return ficheMiseEnCauseServiceImpl.rechercherFileAttenteValidation(regionId, entiteId, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonneMorale> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite) {
+        return pmRepo.findRecentesByValidateur(validateurId, PageRequest.of(0, limite));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public FicheMiseEnCause consulterAvecDetails(UUID id) {
         FicheMiseEnCause fiche = consulter(id);
 
@@ -5354,6 +5491,20 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
     @Transactional(readOnly = true)
     public Page<PersonnePhysiquePublicResponse> rechercherFichesPublic(String nom, UUID entiteId, UUID regionId, String statut, Pageable pageable) {
         return ppRepo.rechercheAvancee(nom, entiteId, regionId, statut, pageable).map(ppMapper::toPublicResponse);
+    }
+
+    // AJOUT : implémentation obligatoire — méthode héritée de FicheMiseEnCauseService
+    @Override
+    @Transactional(readOnly = true)
+    public Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable) {
+        return ficheMiseEnCauseServiceImpl.rechercherFileAttenteValidation(regionId, entiteId, pageable);
+    }
+
+    // AJOUT : implémentation — voir PersonnePhysiqueService pour le contrat
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonnePhysique> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite) {
+        return ppRepo.findRecentesByValidateur(validateurId, PageRequest.of(0, limite));
     }
 
     @Override
@@ -6020,10 +6171,16 @@ package bf.gov.ascelc.logintegrite_backend.service.impl;
 
 import bf.gov.ascelc.logintegrite_backend.dto.request.StatistiqueRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.StatistiqueResponse;
+import bf.gov.ascelc.logintegrite_backend.entity.EntiteOrganisation;
+import bf.gov.ascelc.logintegrite_backend.entity.Region;
+import bf.gov.ascelc.logintegrite_backend.entity.TypeInfraction;
+import bf.gov.ascelc.logintegrite_backend.repository.EntiteOrganisationRepository;
 import bf.gov.ascelc.logintegrite_backend.repository.FicheMiseEnCauseRepository;
 import bf.gov.ascelc.logintegrite_backend.repository.InfractionRepository;
 import bf.gov.ascelc.logintegrite_backend.repository.PersonneMoraleRepository;
 import bf.gov.ascelc.logintegrite_backend.repository.PersonnePhysiqueRepository;
+import bf.gov.ascelc.logintegrite_backend.repository.RegionRepository;
+import bf.gov.ascelc.logintegrite_backend.repository.TypeInfractionRepository;
 import bf.gov.ascelc.logintegrite_backend.service.StatistiqueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -6046,10 +6203,17 @@ public class StatistiqueServiceImpl implements StatistiqueService {
     private final PersonneMoraleRepository pmRepo;
     private final InfractionRepository infractionRepo;
 
+    // AJOUT : nécessaires pour lister l'intégralité des référentiels
+    // existants, indépendamment du fait qu'ils aient déjà des fiches ou non.
+    private final RegionRepository regionRepo;
+    private final EntiteOrganisationRepository entiteRepo;
+    private final TypeInfractionRepository typeInfractionRepo;
+
     @Override
     @Transactional(readOnly = true)
     public StatistiqueResponse calculer(StatistiqueRequest filtres) {
 
+        String statut = filtres.getStatut();
         LocalDateTime debut = filtres.getDateDebut() != null ? filtres.getDateDebut().atStartOfDay() : null;
         LocalDateTime fin = filtres.getDateFin() != null ? filtres.getDateFin().atTime(LocalTime.MAX) : null;
         UUID regionId = filtres.getRegionId();
@@ -6069,22 +6233,43 @@ public class StatistiqueServiceImpl implements StatistiqueService {
         parTypeFiche.put("PERSONNE_PHYSIQUE", ppRepo.countFiltre(regionId, entiteId, typeInfractionId, debut, fin));
         parTypeFiche.put("PERSONNE_MORALE", pmRepo.countFiltre(regionId, entiteId, typeInfractionId, debut, fin));
 
-        // countGroupByEntite / countGroupByTypeInfraction appelées une seule
-        // fois chacune, réutilisées pour repartitionParametrable ET top5Entites
-        // / parNatureInfraction (évite les doubles appels DB)
-        Map<String, Long> parEntite = versMap(ficheRepo.countGroupByEntite(regionId, typeInfractionId, debut, fin));
-        Map<String, Long> parInfraction = versMap(infractionRepo.countGroupByTypeInfraction(regionId, entiteId, debut, fin));
+        // MODIFIÉ (statistiques "intelligentes") : les requêtes de comptage
+        // (countGroupByRegion/Entite/TypeInfraction) partent des fiches et
+        // ne renvoient donc que les référentiels déjà utilisés. Un référentiel
+        // fraîchement créé par l'admin, sans fiche associée, n'apparaissait
+        // pas du tout dans l'histogramme. On part maintenant de la liste
+        // complète des référentiels (initialisés à 0), puis on superpose les
+        // comptes réels — un nouveau référentiel apparaît donc immédiatement,
+        // à zéro, sans attendre qu'une fiche lui soit rattachée.
+        List<String> toutesRegions = regionRepo.findByActifTrue().stream()
+                .map(Region::getNom).collect(Collectors.toList());
+        List<String> toutesEntites = entiteRepo.findByActifTrue().stream()
+                .map(EntiteOrganisation::getNom).collect(Collectors.toList());
+        // TypeInfraction n'a pas de notion actif/inactif dans le modèle actuel
+        // (pas de champ 'actif' sur cette entité) : on liste donc tous les types.
+        List<String> tousTypesInfraction = typeInfractionRepo.findAll().stream()
+                .map(TypeInfraction::getLibelle).collect(Collectors.toList());
+
+        Map<String, Long> parRegion = avecReferentielsComplets(toutesRegions,
+                ficheRepo.countGroupByRegion(entiteId, typeInfractionId, debut, fin));
+        Map<String, Long> parEntite = avecReferentielsComplets(toutesEntites,
+                ficheRepo.countGroupByEntite(regionId, typeInfractionId, debut, fin));
+        Map<String, Long> parInfraction = avecReferentielsComplets(tousTypesInfraction,
+                infractionRepo.countGroupByTypeInfraction(regionId, entiteId, debut, fin));
 
         Map<String, Long> repartitionParametrable = switch (groupBy) {
-            case "ENTITE" -> parEntite;
-            case "INFRACTION" -> parInfraction;
-            default -> versMap(ficheRepo.countGroupByRegion(entiteId, typeInfractionId, debut, fin));
+            case "ENTITE" -> trierParValeurDecroissante(parEntite);
+            case "INFRACTION" -> trierParValeurDecroissante(parInfraction);
+            default -> trierParValeurDecroissante(parRegion);
         };
 
         Map<String, Long> parStatutJudiciaire = versMap(
                 ficheRepo.countGroupByStatutJudiciaire(regionId, entiteId, debut, fin));
 
-        Map<String, Long> top5Entites = parEntite.entrySet().stream()
+        // top5Entites reste basé sur les comptes réels uniquement (un "top 5"
+        // n'a pas de sens rempli d'entités à zéro fiche)
+        Map<String, Long> top5Entites = versMap(ficheRepo.countGroupByEntite(regionId, typeInfractionId, debut, fin))
+                .entrySet().stream()
                 .limit(5)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
 
@@ -6098,9 +6283,32 @@ public class StatistiqueServiceImpl implements StatistiqueService {
                 .groupBy(groupBy)
                 .repartitionParametrable(repartitionParametrable)
                 .parStatutJudiciaire(parStatutJudiciaire)
-                .parNatureInfraction(parInfraction)
+                .parNatureInfraction(trierParValeurDecroissante(parInfraction))
                 .top5Entites(top5Entites)
                 .build();
+    }
+
+    // AJOUT : initialise chaque référentiel connu à 0, puis superpose les
+    // comptes réels issus de la requête de regroupement.
+    private Map<String, Long> avecReferentielsComplets(List<String> tousLesLibelles, List<Object[]> lignesComptees) {
+        Map<String, Long> resultat = new LinkedHashMap<>();
+        tousLesLibelles.forEach(libelle -> resultat.put(libelle, 0L));
+        for (Object[] ligne : lignesComptees) {
+            if (ligne[0] != null) {
+                resultat.put(ligne[0].toString(), (Long) ligne[1]);
+            }
+        }
+        return resultat;
+    }
+
+    // AJOUT : tri décroissant par valeur pour un affichage d'histogramme
+    // cohérent (les référentiels actifs en tête, les référentiels encore
+    // vides en bas, mais toujours visibles).
+    private Map<String, Long> trierParValeurDecroissante(Map<String, Long> map) {
+        return map.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+                        .thenComparing(Map.Entry.comparingByKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
     }
 
     private Map<String, Long> versMap(List<Object[]> lignes) {
@@ -6320,6 +6528,8 @@ public interface PersonneMoraleService extends FicheMiseEnCauseService {
     Page<PersonneMoraleResponse> rechercherMesFiches(String userId, String statut, Pageable pageable);
 
     List<PersonneMorale> listerRecentesBrouillonsOuSoumises(String userId, int limite);
+    // AJOUT : équivalent PM
+    List<PersonneMorale> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite);
 
     PersonneMorale creer(PersonneMorale pm);
     PersonneMorale modifier(UUID id, PersonneMorale pm);
@@ -6369,6 +6579,8 @@ public interface PersonnePhysiqueService extends FicheMiseEnCauseService {
     Page<PersonnePhysiqueResponse> rechercherMesFiches(String userId, String statut, Pageable pageable);
 
     List<PersonnePhysique> listerRecentesBrouillonsOuSoumises(String userId, int limite);
+    // AJOUT : fiches PP validées/rejetées PAR ce validateur — pour ses "actions rapides"
+    List<PersonnePhysique> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite);
 
     PersonnePhysique creer(PersonnePhysique pp);
     PersonnePhysique modifier(UUID id, PersonnePhysique pp);
@@ -6548,11 +6760,14 @@ public final class ApiURLs {
     public static final String FICHES_ARCHIVER = "/{id}/archiver";
     public static final String FICHES_STATUT_JUDICIAIRE = "/{id}/statut-judiciaire";
 
-    // Registre officiel : recherche unifiée PP+PM (voir FicheMiseEnCauseController)
     public static final String FICHES_RECHERCHE = "/recherche";
-
-    // "Mes actions récentes" — dashboard
     public static final String FICHES_MES_ACTIONS_RECENTES = "/mes-actions-recentes";
+
+    // AJOUT : file d'attente de validation (EN_ATTENTE_VALIDATION, tous créateurs)
+    public static final String FICHES_A_VALIDER = "/a-valider";
+
+    // AJOUT : actions rapides du validateur (fiches qu'IL a validées/rejetées)
+    public static final String FICHES_MES_ACTIONS_VALIDATEUR = "/mes-actions-validateur";
 
     public static final String PERSONNES_MORALES = API_V1_ROOT + "/personnes-morales";
     public static final String PERSONNES_MORALES_RECHERCHE = "/recherche";

@@ -27,6 +27,8 @@ public interface PersonnePhysiqueService extends FicheMiseEnCauseService {
     Page<PersonnePhysiqueResponse> rechercherMesFiches(String userId, String statut, Pageable pageable);
 
     List<PersonnePhysique> listerRecentesBrouillonsOuSoumises(String userId, int limite);
+    // AJOUT : fiches PP validées/rejetées PAR ce validateur — pour ses "actions rapides"
+    List<PersonnePhysique> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite);
 
     PersonnePhysique creer(PersonnePhysique pp);
     PersonnePhysique modifier(UUID id, PersonnePhysique pp);

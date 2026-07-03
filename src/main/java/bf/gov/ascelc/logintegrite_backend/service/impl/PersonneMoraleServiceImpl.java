@@ -168,6 +168,18 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable) {
+        return ficheMiseEnCauseServiceImpl.rechercherFileAttenteValidation(regionId, entiteId, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonneMorale> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite) {
+        return pmRepo.findRecentesByValidateur(validateurId, PageRequest.of(0, limite));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public FicheMiseEnCause consulterAvecDetails(UUID id) {
         FicheMiseEnCause fiche = consulter(id);
 

@@ -28,14 +28,17 @@ public class InfractionController {
     private final HistoriqueStatutService historiqueStatutService; // AJOUT
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<InfractionResponse> create(@Valid @RequestBody InfractionRequest request) {
         return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<InfractionResponse> update(@PathVariable UUID id, @Valid @RequestBody InfractionRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<InfractionResponse> getById(@PathVariable UUID id) {

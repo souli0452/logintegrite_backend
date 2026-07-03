@@ -57,6 +57,8 @@ public class PersonneMoraleController {
         return ResponseEntity.ok(pmService.rechercherMesFiches(userId, statut, pageable));
     }
 
+    // MODIFIÉ : même cloisonnement que PersonnePhysiqueController.rechercher()
+    // — voir le commentaire détaillé là-bas.
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
     public ResponseEntity<Page<?>> rechercher(
@@ -71,6 +73,19 @@ public class PersonneMoraleController {
         if (isPublicOnly) {
             return ResponseEntity.ok(pmService.rechercherFichesPublic(raisonSociale, entiteId, regionId, "ACTIVE", typeStructure, pageable));
         }
+
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        if (!isAdmin) {
+            boolean isValidateurOnly = JwtRoleUtils.estValidateurUniquement(jwt);
+            boolean demandeFileValidation = isValidateurOnly && "EN_ATTENTE_VALIDATION".equals(statut);
+            boolean demandeRegistreActif = "ACTIVE".equals(statut);
+
+            if (!demandeFileValidation && !demandeRegistreActif) {
+                String userId = jwt.getSubject();
+                return ResponseEntity.ok(pmService.rechercherMesFiches(userId, statut, pageable));
+            }
+        }
+
         return ResponseEntity.ok(pmService.rechercherFichesInterne(raisonSociale, entiteId, regionId, statut, typeStructure, pageable));
     }
 

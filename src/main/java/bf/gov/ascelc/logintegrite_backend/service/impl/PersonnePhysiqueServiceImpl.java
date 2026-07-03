@@ -162,6 +162,20 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
         return ppRepo.rechercheAvancee(nom, entiteId, regionId, statut, pageable).map(ppMapper::toPublicResponse);
     }
 
+    // AJOUT : implémentation obligatoire — méthode héritée de FicheMiseEnCauseService
+    @Override
+    @Transactional(readOnly = true)
+    public Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable) {
+        return ficheMiseEnCauseServiceImpl.rechercherFileAttenteValidation(regionId, entiteId, pageable);
+    }
+
+    // AJOUT : implémentation — voir PersonnePhysiqueService pour le contrat
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonnePhysique> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite) {
+        return ppRepo.findRecentesByValidateur(validateurId, PageRequest.of(0, limite));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<PersonnePhysique> listerRecentesBrouillonsOuSoumises(String userId, int limite) {

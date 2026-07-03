@@ -23,39 +23,44 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
 
     long countByStatutFiche(String statutFiche);
 
+    // CORRIGÉ : CAST(:statut AS text) IS NULL — le paramètre statut, en String,
+    // était sujet au même bug de type indéterminé côté PostgreSQL que dateDebut/dateFin
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT f FROM FicheMiseEnCause f WHERE " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
-            "(:statut IS NULL OR f.statutFiche = :statut)")
+            "(CAST(:statut AS text) IS NULL OR f.statutFiche = :statut)")
     Page<FicheMiseEnCause> rechercheGlobale(
             @Param("entiteId") UUID entiteId,
             @Param("regionId") UUID regionId,
             @Param("statut") String statut,
             Pageable pageable);
 
-    // Registre officiel : recherche unifiée PP+PM avec pagination fiable
+    // CORRIGÉ : CAST(:recherche AS text) — même bug que "function lower(bytea)
+    // does not exist" ci-dessous, appliqué ici en amont, avant même qu'il se déclenche
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT f FROM FicheMiseEnCause f WHERE f.statutFiche = 'ACTIVE' AND " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
-            "(:recherche IS NULL OR :recherche = '' OR " +
-            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).nom, '')) LIKE LOWER(CONCAT('%', :recherche, '%')) OR " +
-            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).prenoms, '')) LIKE LOWER(CONCAT('%', :recherche, '%')) OR " +
-            "   LOWER(COALESCE(TREAT(f AS PersonneMorale).raisonSociale, '')) LIKE LOWER(CONCAT('%', :recherche, '%')))")
+            "(CAST(:recherche AS text) IS NULL OR :recherche = '' OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).nom, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).prenoms, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonneMorale).raisonSociale, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')))")
     Page<FicheMiseEnCause> rechercheRegistreOfficiel(
             @Param("regionId") UUID regionId,
             @Param("entiteId") UUID entiteId,
             @Param("recherche") String recherche,
             Pageable pageable);
 
+    // CORRIGÉ : CAST(:dateDebut AS timestamp) / CAST(:dateFin AS timestamp)
+    // — c'est exactement la requête de ta stack trace (paramètre $7)
     @Query("SELECT COUNT(DISTINCT f) FROM FicheMiseEnCause f " +
             "LEFT JOIN f.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin)")
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin)")
     long countTotalFiltre(
             @Param("regionId") UUID regionId,
             @Param("entiteId") UUID entiteId,
@@ -69,8 +74,8 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin)")
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin)")
     long countByStatutFiltre(
             @Param("statut") String statut,
             @Param("regionId") UUID regionId,
@@ -83,8 +88,8 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
             "LEFT JOIN f.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin) " +
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin) " +
             "GROUP BY r.nom ORDER BY COUNT(DISTINCT f) DESC")
     List<Object[]> countGroupByRegion(
             @Param("entiteId") UUID entiteId,
@@ -96,8 +101,8 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
             "LEFT JOIN f.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin) " +
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin) " +
             "GROUP BY e.nom ORDER BY COUNT(DISTINCT f) DESC")
     List<Object[]> countGroupByEntite(
             @Param("regionId") UUID regionId,
@@ -108,8 +113,8 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
     @Query("SELECT f.statutJudiciaire, COUNT(f) FROM FicheMiseEnCause f WHERE " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
-            "(:dateDebut IS NULL OR f.createdAt >= :dateDebut) AND " +
-            "(:dateFin IS NULL OR f.createdAt <= :dateFin) " +
+            "(CAST(:dateDebut AS timestamp) IS NULL OR f.createdAt >= :dateDebut) AND " +
+            "(CAST(:dateFin AS timestamp) IS NULL OR f.createdAt <= :dateFin) " +
             "GROUP BY f.statutJudiciaire")
     List<Object[]> countGroupByStatutJudiciaire(
             @Param("regionId") UUID regionId,

@@ -34,8 +34,18 @@ public final class JwtRoleUtils {
                 && !roles.contains("VALIDATEUR");
     }
 
-
     public static boolean estAdministrateur(Jwt jwt) {
         return extraireRoles(jwt).contains("ADMINISTRATEUR");
+    }
+
+    // AJOUT : détecte un utilisateur qui n'a QUE le rôle VALIDATEUR (pas
+    // cumulé avec AGENT ou ADMINISTRATEUR). Sert à distinguer sa file
+    // d'attente de validation (accès large, tous créateurs) du reste des
+    // accès (restreints à ses propres données, comme un agent).
+    public static boolean estValidateurUniquement(Jwt jwt) {
+        List<String> roles = extraireRoles(jwt);
+        return roles.contains("VALIDATEUR")
+                && !roles.contains("ADMINISTRATEUR")
+                && !roles.contains("AGENT");
     }
 }

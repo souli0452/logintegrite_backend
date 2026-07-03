@@ -19,8 +19,12 @@ public interface FicheMiseEnCauseService {
     FicheMiseEnCause modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId);
     FicheMiseEnCause supprimerBrouillonOuSoumise(UUID id, String userId, boolean isAdmin);
 
-    // Recherche unifiée PP+PM pour le registre officiel
     Page<FicheMiseEnCauseResponse> rechercherRegistreOfficiel(String recherche, UUID regionId, UUID entiteId, Pageable pageable);
+
+    // AJOUT : file d'attente de validation — fiches EN_ATTENTE_VALIDATION,
+    // PP+PM confondus, tous créateurs confondus. Réutilise la requête
+    // rechercheGlobale déjà présente dans FicheMiseEnCauseRepository.
+    Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable);
 
     FicheMiseEnCauseResponse obtenirFichePourAffichage(UUID id);
     FicheMiseEnCauseResponse soumettreFiche(UUID id, String agentId);

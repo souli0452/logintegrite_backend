@@ -26,6 +26,7 @@ public class PieceJointeController {
 
     // MODIFIÉ : infractionId ajouté en paramètre optionnel
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<PieceJointeResponse> uploadFichier(
             @RequestParam(value = "ficheId", required = false) UUID ficheId,
             @RequestParam(value = "infractionId", required = false) UUID infractionId,
@@ -34,11 +35,13 @@ public class PieceJointeController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<PieceJointeResponse> create(@Valid @RequestBody PieceJointeRequest request) {
         return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
     public ResponseEntity<PieceJointeResponse> update(@PathVariable UUID id, @Valid @RequestBody PieceJointeRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
