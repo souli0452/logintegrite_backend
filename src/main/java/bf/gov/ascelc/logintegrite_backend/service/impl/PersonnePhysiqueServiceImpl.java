@@ -36,7 +36,6 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
     private final RegionRepository regionRepo;
     private final EntiteOrganisationRepository entiteRepo;
     private final PersonnePhysiqueMapper ppMapper;
-
     private final FicheMiseEnCauseServiceImpl ficheMiseEnCauseServiceImpl;
 
     @Override
@@ -162,18 +161,28 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
         return ppRepo.rechercheAvancee(nom, entiteId, regionId, statut, pageable).map(ppMapper::toPublicResponse);
     }
 
-    // AJOUT : implémentation obligatoire — méthode héritée de FicheMiseEnCauseService
     @Override
     @Transactional(readOnly = true)
     public Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable) {
         return ficheMiseEnCauseServiceImpl.rechercherFileAttenteValidation(regionId, entiteId, pageable);
     }
 
-    // AJOUT : implémentation — voir PersonnePhysiqueService pour le contrat
     @Override
     @Transactional(readOnly = true)
     public List<PersonnePhysique> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite) {
         return ppRepo.findRecentesByValidateur(validateurId, PageRequest.of(0, limite));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonnePhysique> listerDecisionsParValidateur(String validateurId, String statutFiche) {
+        return ppRepo.findByValidateurIdAndStatutFiche(validateurId, statutFiche, Pageable.unpaged());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long compterDecisionsParValidateur(String validateurId, String statutFiche) {
+        return ppRepo.countByValidateurIdAndStatutFiche(validateurId, statutFiche);
     }
 
     @Override
@@ -219,16 +228,12 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
         return ppRepo.save(pp);
     }
 
-    // MODIFIÉ : délègue au service générique — voir FicheMiseEnCauseServiceImpl
-    // pour la garde de transition désormais appliquée uniformément à PP et PM.
     @Override
     @Transactional
     public PersonnePhysique soumettre(UUID id, String agentId) {
         return (PersonnePhysique) ficheMiseEnCauseServiceImpl.soumettre(id, agentId);
     }
 
-    // Reste spécifique : seule opération où PP porte une règle propre
-    // (anti-doublon sur matricule / nom+prénoms+date de naissance).
     @Override
     @Transactional
     public PersonnePhysique valider(UUID id, String validateurId) {
@@ -246,22 +251,18 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
         return ppRepo.save(f);
     }
 
-    // MODIFIÉ : délègue au service générique
     @Override
     @Transactional
     public PersonnePhysique rejeter(UUID id, String motif, String validateurId) {
         return (PersonnePhysique) ficheMiseEnCauseServiceImpl.rejeter(id, motif, validateurId);
     }
 
-    // MODIFIÉ : délègue au service générique
     @Override
     @Transactional
     public PersonnePhysique archiver(UUID id) {
         return (PersonnePhysique) ficheMiseEnCauseServiceImpl.archiver(id);
     }
 
-    // MODIFIÉ : délègue au service générique, qui crée désormais
-    // systématiquement une ligne d'historique (auparavant absent côté PP).
     @Override
     @Transactional
     public PersonnePhysique modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId) {

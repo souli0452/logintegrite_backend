@@ -35,7 +35,6 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
     private final RegionRepository regionRepo;
     private final EntiteOrganisationRepository entiteRepo;
     private final PersonneMoraleMapper pmMapper;
-
     private final FicheMiseEnCauseServiceImpl ficheMiseEnCauseServiceImpl;
 
     @Override
@@ -180,6 +179,19 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
 
     @Override
     @Transactional(readOnly = true)
+    public long compterDecisionsParValidateur(String validateurId, String statutFiche) {
+        // CORRIGÉ : Utilisation de pmRepo à la place de ppRepo
+        return pmRepo.countByValidateurIdAndStatutFiche(validateurId, statutFiche);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonneMorale> listerDecisionsParValidateur(String validateurId, String statutFiche) {
+        return pmRepo.findByValidateurIdAndStatutFiche(validateurId, statutFiche, Pageable.unpaged());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public FicheMiseEnCause consulterAvecDetails(UUID id) {
         FicheMiseEnCause fiche = consulter(id);
 
@@ -218,14 +230,12 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
         return pmRepo.save(pm);
     }
 
-    // MODIFIÉ : délègue au service générique (auparavant dupliqué ici)
     @Override
     @Transactional
     public PersonneMorale soumettre(UUID id, String agentId) {
         return (PersonneMorale) ficheMiseEnCauseServiceImpl.soumettre(id, agentId);
     }
 
-    // Reste spécifique : anti-doublon IFU / raison sociale
     @Override
     @Transactional
     public PersonneMorale valider(UUID id, String validateurId) {
@@ -242,22 +252,18 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
         return pmRepo.save(f);
     }
 
-    // MODIFIÉ : délègue au service générique
     @Override
     @Transactional
     public PersonneMorale rejeter(UUID id, String motif, String validateurId) {
         return (PersonneMorale) ficheMiseEnCauseServiceImpl.rejeter(id, motif, validateurId);
     }
 
-    // MODIFIÉ : délègue au service générique
     @Override
     @Transactional
     public PersonneMorale archiver(UUID id) {
         return (PersonneMorale) ficheMiseEnCauseServiceImpl.archiver(id);
     }
 
-    // MODIFIÉ : délègue au service générique (auparavant dupliqué ici avec
-    // sa propre construction de HistoriqueStatutRequest)
     @Override
     @Transactional
     public PersonneMorale modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId) {

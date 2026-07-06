@@ -31,8 +31,8 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
 
     long countByStatutFiche(String statutFiche);
 
-    // CORRIGÉ : même bug que côté PP (LOWER/CONCAT sur raisonSociale + statut
-    // et typeStructure comparés directement, tous vulnérables sans CAST)
+    long countByValidateurIdAndStatutFiche(String validateurId, String statutFiche);
+
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT m FROM PersonneMorale m WHERE " +
             "(CAST(:raisonSociale AS text) IS NULL OR LOWER(m.raisonSociale) LIKE LOWER(CONCAT('%', CAST(:raisonSociale AS text), '%'))) AND " +
@@ -54,7 +54,6 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
     @Query("SELECT m FROM PersonneMorale m WHERE m.statutFiche = 'ACTIVE' AND LOWER(m.raisonSociale) = LOWER(:raisonSociale)")
     Optional<PersonneMorale> findActiveByRaisonSociale(@Param("raisonSociale") String raisonSociale);
 
-    // CORRIGÉ : CAST(:statut AS text)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT m FROM PersonneMorale m WHERE m.createdById = :createdById AND " +
             "(CAST(:statut AS text) IS NULL OR m.statutFiche = :statut)")
@@ -63,8 +62,6 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
             @Param("statut") String statut,
             Pageable pageable);
 
-    // CORRIGÉ : CAST(:dateDebut/:dateFin AS timestamp) — c'est l'autre moitié
-    // du camembert PP/PM appelé par /statistiques
     @Query("SELECT COUNT(DISTINCT m) FROM PersonneMorale m " +
             "LEFT JOIN m.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR m.region.id = :regionId) AND " +
@@ -83,4 +80,7 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
     @Query("SELECT m FROM PersonneMorale m WHERE m.createdById = :userId AND " +
             "m.statutFiche IN ('BROUILLON', 'EN_ATTENTE_VALIDATION') ORDER BY m.updatedAt DESC")
     List<PersonneMorale> findRecentesByCreateur(@Param("userId") String userId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
+    List<PersonneMorale> findByValidateurIdAndStatutFiche(String validateurId, String statutFiche, Pageable pageable);
 }

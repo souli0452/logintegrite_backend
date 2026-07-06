@@ -14,6 +14,9 @@ import java.util.List;
 )
 public interface PersonneMoraleMapper {
 
+    @Mapping(target = "typeFiche", constant = "PM")
+    @Mapping(target = "regionNom", source = "region.nom")
+    @Mapping(target = "entiteNom", source = "entite.nom")
     PersonneMoraleResponse toResponse(PersonneMorale entity);
 
     // CORRECTION : On a enlevé les @Mapping obsolètes qui bloquaient le build

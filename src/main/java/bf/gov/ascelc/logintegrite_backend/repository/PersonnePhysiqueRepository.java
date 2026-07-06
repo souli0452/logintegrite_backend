@@ -37,9 +37,8 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
 
     long countByStatutFiche(String statutFiche);
 
-    // CORRIGÉ : c'est CETTE requête qui produisait "function lower(bytea) does
-    // not exist" — le paramètre :nom, utilisé dans LOWER(CONCAT(...)) sans
-    // jamais être casté, était parfois lié à null (recherche sans filtre nom).
+    long countByValidateurIdAndStatutFiche(String validateurId, String statutFiche);
+
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT p FROM PersonnePhysique p WHERE " +
             "(CAST(:nom AS text) IS NULL OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:nom AS text), '%')) OR LOWER(p.prenoms) LIKE LOWER(CONCAT('%', CAST(:nom AS text), '%'))) AND " +
@@ -63,7 +62,6 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
             @Param("prenoms") String prenoms,
             @Param("dateNaissance") LocalDate dateNaissance);
 
-    // CORRIGÉ : CAST(:statut AS text)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT p FROM PersonnePhysique p WHERE p.createdById = :createdById AND " +
             "(CAST(:statut AS text) IS NULL OR p.statutFiche = :statut)")
@@ -72,8 +70,6 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
             @Param("statut") String statut,
             Pageable pageable);
 
-    // CORRIGÉ : CAST(:dateDebut/:dateFin AS timestamp) — appelée par
-    // /statistiques pour le camembert PP/PM, même bug que countTotalFiltre
     @Query("SELECT COUNT(DISTINCT p) FROM PersonnePhysique p " +
             "LEFT JOIN p.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR p.region.id = :regionId) AND " +
@@ -92,4 +88,7 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
     @Query("SELECT p FROM PersonnePhysique p WHERE p.createdById = :userId AND " +
             "p.statutFiche IN ('BROUILLON', 'EN_ATTENTE_VALIDATION') ORDER BY p.updatedAt DESC")
     List<PersonnePhysique> findRecentesByCreateur(@Param("userId") String userId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
+    List<PersonnePhysique> findByValidateurIdAndStatutFiche(String validateurId, String statutFiche, Pageable pageable);
 }

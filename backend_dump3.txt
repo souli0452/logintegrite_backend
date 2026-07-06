@@ -684,6 +684,18 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(cinqPlusRecentes);
     }
 
+    // AJOUT : total exact des décisions personnelles du validateur, pour les KPI
+// "Validées par moi" / "Rejetées par moi" du tableau de bord.
+    @GetMapping(ApiURLs.FICHES_MES_DECISIONS_COMPTEUR)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<Long> compterMesDecisions(
+            @RequestParam String statut, @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        long total = ppService.compterDecisionsParValidateur(validateurId, statut)
+                + pmService.compterDecisionsParValidateur(validateurId, statut);
+        return ResponseEntity.ok(total);
+    }
+
     // Route vers le service spécialisé selon le type réel de la fiche, pour
     // que le contrôle anti-doublon (matricule/IFU) s'applique quel que soit
     // le point d'entrée utilisé.
@@ -702,6 +714,8 @@ public class FicheMiseEnCauseController {
             throw new IllegalStateException(
                     "Type de fiche non pris en charge pour la validation : " + ficheExistante.getClass().getSimpleName());
         }
+
+
 
         FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheValidee);
         auditService.log(jwt, "VALIDATION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
@@ -3665,6 +3679,9 @@ import java.util.List;
 )
 public interface PersonneMoraleMapper {
 
+    @Mapping(target = "typeFiche", constant = "PM")
+    @Mapping(target = "regionNom", source = "region.nom")
+    @Mapping(target = "entiteNom", source = "entite.nom")
     PersonneMoraleResponse toResponse(PersonneMorale entity);
 
     // CORRECTION : On a enlevé les @Mapping obsolètes qui bloquaient le build
@@ -3699,6 +3716,9 @@ import java.util.List;
 )
 public interface PersonnePhysiqueMapper {
 
+    @Mapping(target = "typeFiche", constant = "PM")
+    @Mapping(target = "regionNom", source = "region.nom")
+    @Mapping(target = "entiteNom", source = "entite.nom")
     PersonnePhysiqueResponse toResponse(PersonnePhysique entity);
 
     PersonnePhysiquePublicResponse toPublicResponse(PersonnePhysique entity);
@@ -4123,8 +4143,8 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
 
     long countByStatutFiche(String statutFiche);
 
-    // CORRIGÉ : même bug que côté PP (LOWER/CONCAT sur raisonSociale + statut
-    // et typeStructure comparés directement, tous vulnérables sans CAST)
+    long countByValidateurIdAndStatutFiche(String validateurId, String statutFiche);
+
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT m FROM PersonneMorale m WHERE " +
             "(CAST(:raisonSociale AS text) IS NULL OR LOWER(m.raisonSociale) LIKE LOWER(CONCAT('%', CAST(:raisonSociale AS text), '%'))) AND " +
@@ -4146,7 +4166,6 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
     @Query("SELECT m FROM PersonneMorale m WHERE m.statutFiche = 'ACTIVE' AND LOWER(m.raisonSociale) = LOWER(:raisonSociale)")
     Optional<PersonneMorale> findActiveByRaisonSociale(@Param("raisonSociale") String raisonSociale);
 
-    // CORRIGÉ : CAST(:statut AS text)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT m FROM PersonneMorale m WHERE m.createdById = :createdById AND " +
             "(CAST(:statut AS text) IS NULL OR m.statutFiche = :statut)")
@@ -4155,8 +4174,6 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
             @Param("statut") String statut,
             Pageable pageable);
 
-    // CORRIGÉ : CAST(:dateDebut/:dateFin AS timestamp) — c'est l'autre moitié
-    // du camembert PP/PM appelé par /statistiques
     @Query("SELECT COUNT(DISTINCT m) FROM PersonneMorale m " +
             "LEFT JOIN m.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR m.region.id = :regionId) AND " +
@@ -4175,6 +4192,9 @@ public interface PersonneMoraleRepository extends JpaRepository<PersonneMorale, 
     @Query("SELECT m FROM PersonneMorale m WHERE m.createdById = :userId AND " +
             "m.statutFiche IN ('BROUILLON', 'EN_ATTENTE_VALIDATION') ORDER BY m.updatedAt DESC")
     List<PersonneMorale> findRecentesByCreateur(@Param("userId") String userId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
+    List<PersonneMorale> findByValidateurIdAndStatutFiche(String validateurId, String statutFiche, Pageable pageable);
 }
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/repository/PersonnePhysiqueRepository.java =====
@@ -4217,9 +4237,8 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
 
     long countByStatutFiche(String statutFiche);
 
-    // CORRIGÉ : c'est CETTE requête qui produisait "function lower(bytea) does
-    // not exist" — le paramètre :nom, utilisé dans LOWER(CONCAT(...)) sans
-    // jamais être casté, était parfois lié à null (recherche sans filtre nom).
+    long countByValidateurIdAndStatutFiche(String validateurId, String statutFiche);
+
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT p FROM PersonnePhysique p WHERE " +
             "(CAST(:nom AS text) IS NULL OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:nom AS text), '%')) OR LOWER(p.prenoms) LIKE LOWER(CONCAT('%', CAST(:nom AS text), '%'))) AND " +
@@ -4243,7 +4262,6 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
             @Param("prenoms") String prenoms,
             @Param("dateNaissance") LocalDate dateNaissance);
 
-    // CORRIGÉ : CAST(:statut AS text)
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT p FROM PersonnePhysique p WHERE p.createdById = :createdById AND " +
             "(CAST(:statut AS text) IS NULL OR p.statutFiche = :statut)")
@@ -4252,8 +4270,6 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
             @Param("statut") String statut,
             Pageable pageable);
 
-    // CORRIGÉ : CAST(:dateDebut/:dateFin AS timestamp) — appelée par
-    // /statistiques pour le camembert PP/PM, même bug que countTotalFiltre
     @Query("SELECT COUNT(DISTINCT p) FROM PersonnePhysique p " +
             "LEFT JOIN p.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR p.region.id = :regionId) AND " +
@@ -4272,6 +4288,9 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
     @Query("SELECT p FROM PersonnePhysique p WHERE p.createdById = :userId AND " +
             "p.statutFiche IN ('BROUILLON', 'EN_ATTENTE_VALIDATION') ORDER BY p.updatedAt DESC")
     List<PersonnePhysique> findRecentesByCreateur(@Param("userId") String userId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"entite", "region"})
+    List<PersonnePhysique> findByValidateurIdAndStatutFiche(String validateurId, String statutFiche, Pageable pageable);
 }
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/repository/PieceJointeRepository.java =====
@@ -5080,7 +5099,6 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
     private final RegionRepository regionRepo;
     private final EntiteOrganisationRepository entiteRepo;
     private final PersonneMoraleMapper pmMapper;
-
     private final FicheMiseEnCauseServiceImpl ficheMiseEnCauseServiceImpl;
 
     @Override
@@ -5225,6 +5243,19 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
 
     @Override
     @Transactional(readOnly = true)
+    public long compterDecisionsParValidateur(String validateurId, String statutFiche) {
+        // CORRIGÉ : Utilisation de pmRepo à la place de ppRepo
+        return pmRepo.countByValidateurIdAndStatutFiche(validateurId, statutFiche);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonneMorale> listerDecisionsParValidateur(String validateurId, String statutFiche) {
+        return pmRepo.findByValidateurIdAndStatutFiche(validateurId, statutFiche, Pageable.unpaged());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public FicheMiseEnCause consulterAvecDetails(UUID id) {
         FicheMiseEnCause fiche = consulter(id);
 
@@ -5263,14 +5294,12 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
         return pmRepo.save(pm);
     }
 
-    // MODIFIÉ : délègue au service générique (auparavant dupliqué ici)
     @Override
     @Transactional
     public PersonneMorale soumettre(UUID id, String agentId) {
         return (PersonneMorale) ficheMiseEnCauseServiceImpl.soumettre(id, agentId);
     }
 
-    // Reste spécifique : anti-doublon IFU / raison sociale
     @Override
     @Transactional
     public PersonneMorale valider(UUID id, String validateurId) {
@@ -5287,22 +5316,18 @@ public class PersonneMoraleServiceImpl implements PersonneMoraleService {
         return pmRepo.save(f);
     }
 
-    // MODIFIÉ : délègue au service générique
     @Override
     @Transactional
     public PersonneMorale rejeter(UUID id, String motif, String validateurId) {
         return (PersonneMorale) ficheMiseEnCauseServiceImpl.rejeter(id, motif, validateurId);
     }
 
-    // MODIFIÉ : délègue au service générique
     @Override
     @Transactional
     public PersonneMorale archiver(UUID id) {
         return (PersonneMorale) ficheMiseEnCauseServiceImpl.archiver(id);
     }
 
-    // MODIFIÉ : délègue au service générique (auparavant dupliqué ici avec
-    // sa propre construction de HistoriqueStatutRequest)
     @Override
     @Transactional
     public PersonneMorale modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId) {
@@ -5367,7 +5392,6 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
     private final RegionRepository regionRepo;
     private final EntiteOrganisationRepository entiteRepo;
     private final PersonnePhysiqueMapper ppMapper;
-
     private final FicheMiseEnCauseServiceImpl ficheMiseEnCauseServiceImpl;
 
     @Override
@@ -5493,18 +5517,28 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
         return ppRepo.rechercheAvancee(nom, entiteId, regionId, statut, pageable).map(ppMapper::toPublicResponse);
     }
 
-    // AJOUT : implémentation obligatoire — méthode héritée de FicheMiseEnCauseService
     @Override
     @Transactional(readOnly = true)
     public Page<FicheMiseEnCauseResponse> rechercherFileAttenteValidation(UUID regionId, UUID entiteId, Pageable pageable) {
         return ficheMiseEnCauseServiceImpl.rechercherFileAttenteValidation(regionId, entiteId, pageable);
     }
 
-    // AJOUT : implémentation — voir PersonnePhysiqueService pour le contrat
     @Override
     @Transactional(readOnly = true)
     public List<PersonnePhysique> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite) {
         return ppRepo.findRecentesByValidateur(validateurId, PageRequest.of(0, limite));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonnePhysique> listerDecisionsParValidateur(String validateurId, String statutFiche) {
+        return ppRepo.findByValidateurIdAndStatutFiche(validateurId, statutFiche, Pageable.unpaged());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long compterDecisionsParValidateur(String validateurId, String statutFiche) {
+        return ppRepo.countByValidateurIdAndStatutFiche(validateurId, statutFiche);
     }
 
     @Override
@@ -5550,16 +5584,12 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
         return ppRepo.save(pp);
     }
 
-    // MODIFIÉ : délègue au service générique — voir FicheMiseEnCauseServiceImpl
-    // pour la garde de transition désormais appliquée uniformément à PP et PM.
     @Override
     @Transactional
     public PersonnePhysique soumettre(UUID id, String agentId) {
         return (PersonnePhysique) ficheMiseEnCauseServiceImpl.soumettre(id, agentId);
     }
 
-    // Reste spécifique : seule opération où PP porte une règle propre
-    // (anti-doublon sur matricule / nom+prénoms+date de naissance).
     @Override
     @Transactional
     public PersonnePhysique valider(UUID id, String validateurId) {
@@ -5577,22 +5607,18 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
         return ppRepo.save(f);
     }
 
-    // MODIFIÉ : délègue au service générique
     @Override
     @Transactional
     public PersonnePhysique rejeter(UUID id, String motif, String validateurId) {
         return (PersonnePhysique) ficheMiseEnCauseServiceImpl.rejeter(id, motif, validateurId);
     }
 
-    // MODIFIÉ : délègue au service générique
     @Override
     @Transactional
     public PersonnePhysique archiver(UUID id) {
         return (PersonnePhysique) ficheMiseEnCauseServiceImpl.archiver(id);
     }
 
-    // MODIFIÉ : délègue au service générique, qui crée désormais
-    // systématiquement une ligne d'historique (auparavant absent côté PP).
     @Override
     @Transactional
     public PersonnePhysique modifierStatutJudiciaire(UUID id, StatutJudiciaireRequest request, String agentId) {
@@ -6528,8 +6554,13 @@ public interface PersonneMoraleService extends FicheMiseEnCauseService {
     Page<PersonneMoraleResponse> rechercherMesFiches(String userId, String statut, Pageable pageable);
 
     List<PersonneMorale> listerRecentesBrouillonsOuSoumises(String userId, int limite);
-    // AJOUT : équivalent PM
+
     List<PersonneMorale> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite);
+    long compterDecisionsParValidateur(String validateurId, String statutFiche);
+
+    // AJOUT : Liste complète des décisions prises par un validateur pour alimenter les graphiques
+    List<PersonneMorale> listerDecisionsParValidateur(String validateurId, String statutFiche);
+
 
     PersonneMorale creer(PersonneMorale pm);
     PersonneMorale modifier(UUID id, PersonneMorale pm);
@@ -6579,8 +6610,12 @@ public interface PersonnePhysiqueService extends FicheMiseEnCauseService {
     Page<PersonnePhysiqueResponse> rechercherMesFiches(String userId, String statut, Pageable pageable);
 
     List<PersonnePhysique> listerRecentesBrouillonsOuSoumises(String userId, int limite);
-    // AJOUT : fiches PP validées/rejetées PAR ce validateur — pour ses "actions rapides"
+
     List<PersonnePhysique> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite);
+    long compterDecisionsParValidateur(String validateurId, String statutFiche);
+
+    // AJOUT : Liste complète des décisions prises par un validateur pour alimenter les graphiques
+    List<PersonnePhysique> listerDecisionsParValidateur(String validateurId, String statutFiche);
 
     PersonnePhysique creer(PersonnePhysique pp);
     PersonnePhysique modifier(UUID id, PersonnePhysique pp);
@@ -6768,6 +6803,8 @@ public final class ApiURLs {
 
     // AJOUT : actions rapides du validateur (fiches qu'IL a validées/rejetées)
     public static final String FICHES_MES_ACTIONS_VALIDATEUR = "/mes-actions-validateur";
+    public static final String FICHES_MES_DECISIONS_COMPTEUR = "/mes-decisions-compteur";
+    public static final String FICHES_MES_DECISIONS = "/mes-decisions";
 
     public static final String PERSONNES_MORALES = API_V1_ROOT + "/personnes-morales";
     public static final String PERSONNES_MORALES_RECHERCHE = "/recherche";

@@ -174,6 +174,18 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(cinqPlusRecentes);
     }
 
+    // AJOUT : total exact des décisions personnelles du validateur, pour les KPI
+// "Validées par moi" / "Rejetées par moi" du tableau de bord.
+    @GetMapping(ApiURLs.FICHES_MES_DECISIONS_COMPTEUR)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<Long> compterMesDecisions(
+            @RequestParam String statut, @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        long total = ppService.compterDecisionsParValidateur(validateurId, statut)
+                + pmService.compterDecisionsParValidateur(validateurId, statut);
+        return ResponseEntity.ok(total);
+    }
+
     // Route vers le service spécialisé selon le type réel de la fiche, pour
     // que le contrôle anti-doublon (matricule/IFU) s'applique quel que soit
     // le point d'entrée utilisé.
@@ -192,6 +204,8 @@ public class FicheMiseEnCauseController {
             throw new IllegalStateException(
                     "Type de fiche non pris en charge pour la validation : " + ficheExistante.getClass().getSimpleName());
         }
+
+
 
         FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheValidee);
         auditService.log(jwt, "VALIDATION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());

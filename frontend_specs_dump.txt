@@ -1,0 +1,1409 @@
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/abstracts/AuditEntityDto.java =====
+package bf.gov.ascelc.logintegrite_backend.abstracts;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Getter
+@Setter
+@SuperBuilder
+@NoArgsConstructor
+public abstract class AuditEntityDto {
+
+    private UUID id;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updatedAt;
+
+    private String createdById;
+
+    private String updatedById;
+
+    private String currentFirstName;
+
+    private String currentLastName;
+
+    private String currentUserEmail;
+}
+
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/AuditController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.entity.JournalAudit;
+import bf.gov.ascelc.logintegrite_backend.repository.JournalAuditRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+
+import static bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs.*;
+
+@RestController
+@RequestMapping(AUDIT) // Aligné dynamiquement sur "/api/v1/audit"
+@RequiredArgsConstructor
+public class AuditController {
+
+    private final JournalAuditRepository auditRepo;
+
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Page<JournalAudit>> journal(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(auditRepo.findAll(
+                PageRequest.of(page, size, Sort.by("horodatage").descending())));
+    }
+
+    @GetMapping(AUDIT_MES_ACTIONS) // Équivaut à "/api/v1/audit/mes-actions"
+    // Remplacement par hasAnyAuthority pour s'assurer qu'un utilisateur possède bien un rôle applicatif minimal
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<Page<JournalAudit>> mesActions(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        // Protection contre le NullPointerException en récupérant l'ID utilisateur unique du JWT (sub)
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+
+        return ResponseEntity.ok(
+                auditRepo.findByUtilisateurId(
+                        userId,
+                        PageRequest.of(page, size, Sort.by("horodatage").descending())));
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/EntiteOrganisationController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.EntiteOrganisationRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.EntiteOrganisationResponse;
+import bf.gov.ascelc.logintegrite_backend.service.EntiteOrganisationService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/entite-organisations") // Standardisation sur la v1 de Log Intégrité
+@RequiredArgsConstructor
+// Protection globale pour les agents, validateurs et administrateurs du système
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+public class EntiteOrganisationController {
+
+    private final EntiteOrganisationService service;
+
+    @PostMapping
+    public ResponseEntity<EntiteOrganisationResponse> create(@Valid @RequestBody EntiteOrganisationRequest request) {
+        return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<EntiteOrganisationResponse> update(@PathVariable UUID id, @Valid @RequestBody EntiteOrganisationRequest request) {
+        return ResponseEntity.ok(service.update(id, request));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<EntiteOrganisationResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<EntiteOrganisationResponse>> getAll() {
+        return ResponseEntity.ok(service.getAll());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/FicheMiseEnCauseController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.abstracts.FicheMiseEnCause;
+import bf.gov.ascelc.logintegrite_backend.config.security.JwtRoleUtils;
+import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.FicheDetailResponse;
+import bf.gov.ascelc.logintegrite_backend.dto.response.FicheMiseEnCauseResponse;
+import bf.gov.ascelc.logintegrite_backend.entity.PersonneMorale;
+import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
+import bf.gov.ascelc.logintegrite_backend.service.AuditService;
+import bf.gov.ascelc.logintegrite_backend.service.FicheMiseEnCauseService;
+import bf.gov.ascelc.logintegrite_backend.service.PersonnePhysiqueService;
+import bf.gov.ascelc.logintegrite_backend.service.PersonneMoraleService;
+import bf.gov.ascelc.logintegrite_backend.mapper.FicheMiseEnCauseMapper;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping(ApiURLs.FICHES)
+public class FicheMiseEnCauseController {
+
+    private final FicheMiseEnCauseService ficheService;
+    private final FicheMiseEnCauseMapper ficheMapper;
+    private final PersonnePhysiqueService ppService;
+    private final PersonneMoraleService pmService;
+    private final AuditService auditService;
+    private final HttpServletRequest request;
+
+    public FicheMiseEnCauseController(
+            @Qualifier("ficheMiseEnCauseServiceImpl") FicheMiseEnCauseService ficheService,
+            FicheMiseEnCauseMapper ficheMapper,
+            PersonnePhysiqueService ppService,
+            PersonneMoraleService pmService,
+            AuditService auditService,
+            HttpServletRequest request) {
+        this.ficheService = ficheService;
+        this.ficheMapper = ficheMapper;
+        this.ppService = ppService;
+        this.pmService = pmService;
+        this.auditService = auditService;
+        this.request = request;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
+    public ResponseEntity<?> lister(@AuthenticationPrincipal Jwt jwt) {
+        boolean isPublicOnly = JwtRoleUtils.estRolePublicUniquement(jwt);
+        if (isPublicOnly) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        boolean isValidateurOnly = JwtRoleUtils.estValidateurUniquement(jwt);
+
+        List<FicheMiseEnCauseResponse> responses = new ArrayList<>();
+
+        if (isAdmin) {
+            // Supervision complète : toutes les fiches, tous statuts, tous créateurs
+            responses.addAll(ppService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
+            responses.addAll(pmService.listerTout().stream().map(ficheMapper::toResponse).collect(Collectors.toList()));
+        } else if (isValidateurOnly) {
+            // File d'attente de validation uniquement, tous créateurs confondus
+            responses.addAll(ficheService.rechercherFileAttenteValidation(null, null, Pageable.unpaged()).getContent());
+        } else {
+            // Agent : uniquement ses propres fiches, tous statuts confondus
+            String userId = jwt.getSubject();
+            responses.addAll(ppService.rechercherMesFiches(userId, null, Pageable.unpaged()).getContent());
+            responses.addAll(pmService.rechercherMesFiches(userId, null, Pageable.unpaged()).getContent());
+        }
+
+        return ResponseEntity.ok(responses);
+    }
+
+
+    // AJOUT (registre officiel) : recherche unifiée PP+PM, fiches ACTIVE
+    // uniquement, pagination fiable côté SQL. Visible par tous les rôles y
+    // compris public (c'est le registre officiel, il doit être consultable
+    // par tous — décision : identifiantUnique reste visible au public, ce
+    // DTO n'expose pas de données sensibles comme la date de naissance).
+    @GetMapping(ApiURLs.FICHES_RECHERCHE)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
+    public ResponseEntity<Page<FicheMiseEnCauseResponse>> registreOfficiel(
+            @RequestParam(required = false) String recherche,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID entiteId,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ficheService.rechercherRegistreOfficiel(recherche, regionId, entiteId, pageable));
+    }
+
+    // Les 5 dernières fiches BROUILLON/EN_ATTENTE_VALIDATION créées par
+    // l'utilisateur connecté (PP+PM confondus), pour le dashboard
+    @GetMapping(ApiURLs.FICHES_MES_ACTIONS_RECENTES)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<List<FicheMiseEnCauseResponse>> mesActionsRecentes(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+
+        List<FicheMiseEnCauseResponse> combinees = new ArrayList<>();
+        combinees.addAll(ppService.listerRecentesBrouillonsOuSoumises(userId, 5).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+        combinees.addAll(pmService.listerRecentesBrouillonsOuSoumises(userId, 5).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+
+        List<FicheMiseEnCauseResponse> cinqPlusRecentes = combinees.stream()
+                .sorted(Comparator.comparing(FicheMiseEnCauseResponse::getDateModification,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(5)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(cinqPlusRecentes);
+    }
+
+    @GetMapping(ApiURLs.FICHES_ID)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<FicheDetailResponse> consulter(@PathVariable UUID id) {
+        FicheMiseEnCause fiche = ficheService.consulterAvecDetails(id);
+        return ResponseEntity.ok(ficheMapper.toDetailResponse(fiche));
+    }
+
+    @PutMapping(ApiURLs.FICHES_SOUMETTRE)
+    @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<FicheMiseEnCauseResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.soumettre(id, agentId));
+        auditService.log(jwt, "SOUMISSION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping(ApiURLs.FICHES_A_VALIDER)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR', 'ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Page<FicheMiseEnCauseResponse>> fileAttenteValidation(
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID entiteId,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ficheService.rechercherFileAttenteValidation(regionId, entiteId, pageable));
+    }
+
+    // AJOUT : "actions rapides" du validateur — les 5 dernières fiches
+    // (PP+PM) qu'IL a lui-même validées ou rejetées, triées par date de
+    // décision décroissante.
+    @GetMapping(ApiURLs.FICHES_MES_ACTIONS_VALIDATEUR)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<List<FicheMiseEnCauseResponse>> mesActionsValidateur(@AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+
+        List<FicheMiseEnCauseResponse> combinees = new ArrayList<>();
+        combinees.addAll(ppService.listerRecentesValideesOuRejeteesParValidateur(validateurId, 5).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+        combinees.addAll(pmService.listerRecentesValideesOuRejeteesParValidateur(validateurId, 5).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+
+        List<FicheMiseEnCauseResponse> cinqPlusRecentes = combinees.stream()
+                .sorted(Comparator.comparing(FicheMiseEnCauseResponse::getDateModification,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(5)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(cinqPlusRecentes);
+    }
+
+    // Route vers le service spécialisé selon le type réel de la fiche, pour
+    // que le contrôle anti-doublon (matricule/IFU) s'applique quel que soit
+    // le point d'entrée utilisé.
+    @PutMapping(ApiURLs.FICHES_VALIDER)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<FicheMiseEnCauseResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+
+        FicheMiseEnCause ficheExistante = ficheService.consulter(id);
+        FicheMiseEnCause ficheValidee;
+        if (ficheExistante instanceof PersonnePhysique) {
+            ficheValidee = ppService.valider(id, validateurId);
+        } else if (ficheExistante instanceof PersonneMorale) {
+            ficheValidee = pmService.valider(id, validateurId);
+        } else {
+            throw new IllegalStateException(
+                    "Type de fiche non pris en charge pour la validation : " + ficheExistante.getClass().getSimpleName());
+        }
+
+        FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheValidee);
+        auditService.log(jwt, "VALIDATION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping(ApiURLs.FICHES_REJETER)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<FicheMiseEnCauseResponse> rejeter(
+            @PathVariable UUID id, @RequestParam String motif, @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.rejeter(id, motif, validateurId));
+        auditService.log(jwt, "REJET_FICHE", response.getTypeFiche(), id.toString(), motif, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping(ApiURLs.FICHES_ARCHIVER)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Void> archiver(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        ficheService.archiver(id);
+        auditService.log(jwt, "ARCHIVAGE_FICHE", "FicheMiseEnCause", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping(ApiURLs.FICHES_STATUT_JUDICIAIRE)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<FicheMiseEnCauseResponse> modifierStatutJudiciaire(
+            @PathVariable UUID id, @Valid @RequestBody StatutJudiciaireRequest statutRequest, @AuthenticationPrincipal Jwt jwt) {
+        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        FicheMiseEnCauseResponse response = ficheMapper.toResponse(
+                ficheService.modifierStatutJudiciaire(id, statutRequest, agentId));
+        auditService.log(jwt, "MODIFICATION_STATUT_JUDICIAIRE", response.getTypeFiche(), id.toString(),
+                "Nouveau statut : " + statutRequest.getStatutJudiciaire(), request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping(ApiURLs.FICHES_ID)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<Void> supprimer(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        ficheService.supprimerBrouillonOuSoumise(id, userId, isAdmin);
+        auditService.log(jwt, "SUPPRESSION_FICHE", "FicheMiseEnCause", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/HistoriqueStatutController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.HistoriqueStatutRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.HistoriqueStatutResponse;
+import bf.gov.ascelc.logintegrite_backend.service.HistoriqueStatutService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping(ApiURLs.FICHES) // Aligné dynamiquement sur "/api/v1/fiches"
+@RequiredArgsConstructor
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+public class HistoriqueStatutController {
+
+    private final HistoriqueStatutService historiqueService;
+
+    // URL finale : POST /api/v1/fiches/{ficheId}/historique-statut
+    @PostMapping("/{ficheId}/historique-statut")
+    public ResponseEntity<HistoriqueStatutResponse> changerStatutJudiciaire(
+            @PathVariable UUID ficheId,
+            @Valid @RequestBody HistoriqueStatutRequest request) {
+
+        request.setFicheId(ficheId);
+        return new ResponseEntity<>(historiqueService.create(request), HttpStatus.CREATED);
+    }
+
+    // URL finale : GET /api/v1/fiches/{id}/historique
+    @GetMapping("/{id}/historique")
+    public ResponseEntity<List<HistoriqueStatutResponse>> obtenirHistoriqueParFiche(
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(historiqueService.getByFicheId(id));
+    }
+}
+
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/InfractionController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.InfractionRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.InfractionResponse;
+import bf.gov.ascelc.logintegrite_backend.dto.response.PieceJointeResponse;
+import bf.gov.ascelc.logintegrite_backend.dto.response.HistoriqueStatutResponse;
+import bf.gov.ascelc.logintegrite_backend.service.InfractionService;
+import bf.gov.ascelc.logintegrite_backend.service.PieceJointeService;
+import bf.gov.ascelc.logintegrite_backend.service.HistoriqueStatutService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/infractions")
+@RequiredArgsConstructor
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+public class InfractionController {
+
+    private final InfractionService service;
+    private final PieceJointeService pieceJointeService;       // AJOUT
+    private final HistoriqueStatutService historiqueStatutService; // AJOUT
+
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<InfractionResponse> create(@Valid @RequestBody InfractionRequest request) {
+        return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<InfractionResponse> update(@PathVariable UUID id, @Valid @RequestBody InfractionRequest request) {
+        return ResponseEntity.ok(service.update(id, request));
+    }
+
+
+    @GetMapping("/{id}")
+    public ResponseEntity<InfractionResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<InfractionResponse>> getAll() {
+        return ResponseEntity.ok(service.getAll());
+    }
+
+    @GetMapping("/fiche/{ficheId}")
+    public ResponseEntity<List<InfractionResponse>> getByFicheId(@PathVariable UUID ficheId) {
+        return ResponseEntity.ok(service.getByFicheId(ficheId));
+    }
+
+    // AJOUT : accès direct aux pièces jointes d'une infraction
+    @GetMapping("/{id}/pieces-jointes")
+    public ResponseEntity<List<PieceJointeResponse>> getPiecesJointes(@PathVariable UUID id) {
+        return ResponseEntity.ok(pieceJointeService.getByInfractionId(id));
+    }
+
+    // AJOUT : accès direct à l'historique de statut d'une infraction
+    @GetMapping("/{id}/historique-statuts")
+    public ResponseEntity<List<HistoriqueStatutResponse>> getHistoriqueStatuts(@PathVariable UUID id) {
+        return ResponseEntity.ok(historiqueStatutService.getByInfractionId(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/NotificationController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.NotificationRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.NotificationResponse;
+import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/notifications")
+@RequiredArgsConstructor
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+public class NotificationController {
+
+    private final NotificationService service;
+
+    @PostMapping
+    public ResponseEntity<NotificationResponse> create(@Valid @RequestBody NotificationRequest request) {
+        return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<List<NotificationResponse>> getMyNotifications(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(service.getMyNotifications(userId));
+    }
+
+    @GetMapping("/me/unread")
+    public ResponseEntity<List<NotificationResponse>> getMyUnreadNotifications(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(service.getMyUnreadNotifications(userId));
+    }
+
+    // MODIFIÉ : transmet l'utilisateur courant pour le contrôle de propriété (IDOR)
+    @PutMapping("/{id}/read")
+    public ResponseEntity<NotificationResponse> markAsRead(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(service.markAsRead(id, userId));
+    }
+
+    @PutMapping("/read-all")
+    public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        service.markAllAsRead(userId);
+        return ResponseEntity.ok().build();
+    }
+
+    // MODIFIÉ : idem
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        service.delete(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/PersonneMoraleController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.config.security.JwtRoleUtils;
+import bf.gov.ascelc.logintegrite_backend.dto.request.PersonneMoraleRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.PersonneMoraleResponse;
+import bf.gov.ascelc.logintegrite_backend.dto.response.VerificationExistenceResponse;
+import bf.gov.ascelc.logintegrite_backend.service.AuditService;
+import bf.gov.ascelc.logintegrite_backend.service.PersonneMoraleService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping(ApiURLs.PERSONNES_MORALES)
+@RequiredArgsConstructor
+public class PersonneMoraleController {
+
+    private final PersonneMoraleService pmService;
+    private final AuditService auditService;
+    private final HttpServletRequest request;
+
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PersonneMoraleResponse> creer(@Valid @RequestBody PersonneMoraleRequest req, @AuthenticationPrincipal Jwt jwt) {
+        PersonneMoraleResponse response = pmService.creerFiche(req);
+        auditService.log(jwt, "CREATION_FICHE_PM", "PersonneMorale", response.getId().toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/verifier")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<VerificationExistenceResponse> verifierExistence(
+            @RequestParam(required = false) String ifu,
+            @RequestParam(required = false) String raisonSociale) {
+        return ResponseEntity.ok(pmService.verifierExistence(ifu, raisonSociale));
+    }
+
+    @GetMapping("/mes-fiches")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<Page<PersonneMoraleResponse>> mesFiches(
+            @RequestParam(required = false) String statut,
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(pmService.rechercherMesFiches(userId, statut, pageable));
+    }
+
+    // MODIFIÉ : même cloisonnement que PersonnePhysiqueController.rechercher()
+    // — voir le commentaire détaillé là-bas.
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
+    public ResponseEntity<Page<?>> rechercher(
+            @RequestParam(required = false) String raisonSociale,
+            @RequestParam(required = false) UUID entiteId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) String statut,
+            @RequestParam(required = false) String typeStructure,
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal Jwt jwt) {
+        boolean isPublicOnly = JwtRoleUtils.estRolePublicUniquement(jwt);
+        if (isPublicOnly) {
+            return ResponseEntity.ok(pmService.rechercherFichesPublic(raisonSociale, entiteId, regionId, "ACTIVE", typeStructure, pageable));
+        }
+
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        if (!isAdmin) {
+            boolean isValidateurOnly = JwtRoleUtils.estValidateurUniquement(jwt);
+            boolean demandeFileValidation = isValidateurOnly && "EN_ATTENTE_VALIDATION".equals(statut);
+            boolean demandeRegistreActif = "ACTIVE".equals(statut);
+
+            if (!demandeFileValidation && !demandeRegistreActif) {
+                String userId = jwt.getSubject();
+                return ResponseEntity.ok(pmService.rechercherMesFiches(userId, statut, pageable));
+            }
+        }
+
+        return ResponseEntity.ok(pmService.rechercherFichesInterne(raisonSociale, entiteId, regionId, statut, typeStructure, pageable));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
+    public ResponseEntity<?> consulter(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        boolean isPublicOnly = JwtRoleUtils.estRolePublicUniquement(jwt);
+        if (isPublicOnly) {
+            return ResponseEntity.ok(pmService.obtenirFichePourAffichagePublic(id));
+        }
+        return ResponseEntity.ok(pmService.obtenirFichePourAffichage(id));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PersonneMoraleResponse> modifier(
+            @PathVariable UUID id, @Valid @RequestBody PersonneMoraleRequest req, @AuthenticationPrincipal Jwt jwt) {
+        PersonneMoraleResponse response = pmService.modifierFiche(id, req);
+        auditService.log(jwt, "MODIFICATION_FICHE_PM", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/soumettre")
+    @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<PersonneMoraleResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        PersonneMoraleResponse response = pmService.soumettreFiche(id, agentId);
+        auditService.log(jwt, "SOUMISSION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/valider")
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<PersonneMoraleResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        PersonneMoraleResponse response = pmService.validerFiche(id, validateurId);
+        auditService.log(jwt, "VALIDATION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/rejeter")
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<PersonneMoraleResponse> rejeter(
+            @PathVariable UUID id, @RequestParam String motif, @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        PersonneMoraleResponse response = pmService.rejeterFiche(id, motif, validateurId);
+        auditService.log(jwt, "REJET_FICHE", "PersonneMorale", id.toString(), motif, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/statut-judiciaire")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PersonneMoraleResponse> modifierStatutJudiciaire(
+            @PathVariable UUID id, @Valid @RequestBody StatutJudiciaireRequest req, @AuthenticationPrincipal Jwt jwt) {
+        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        PersonneMoraleResponse response = pmService.modifierStatutJudiciaireFiche(id, req, agentId);
+        auditService.log(jwt, "MODIFICATION_STATUT_JUDICIAIRE", "PersonneMorale", id.toString(),
+                "Nouveau statut : " + req.getStatutJudiciaire(), request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}/archiver")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Void> archiver(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        pmService.archiver(id);
+        auditService.log(jwt, "ARCHIVAGE_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/PersonnePhysiqueController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.config.security.JwtRoleUtils;
+import bf.gov.ascelc.logintegrite_backend.dto.request.PersonnePhysiqueRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.PersonnePhysiqueResponse;
+import bf.gov.ascelc.logintegrite_backend.dto.response.VerificationExistenceResponse;
+import bf.gov.ascelc.logintegrite_backend.service.AuditService;
+import bf.gov.ascelc.logintegrite_backend.service.PersonnePhysiqueService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.UUID;
+
+@RestController
+@RequestMapping(ApiURLs.PERSONNES_PHYSIQUES)
+@RequiredArgsConstructor
+public class PersonnePhysiqueController {
+
+    private final PersonnePhysiqueService ppService;
+    private final AuditService auditService;
+    private final HttpServletRequest request;
+
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PersonnePhysiqueResponse> creer(@Valid @RequestBody PersonnePhysiqueRequest req, @AuthenticationPrincipal Jwt jwt) {
+        PersonnePhysiqueResponse response = ppService.creerFiche(req);
+        auditService.log(jwt, "CREATION_FICHE_PP", "PersonnePhysique", response.getId().toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/verifier")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<VerificationExistenceResponse> verifierExistence(
+            @RequestParam(required = false) String matricule,
+            @RequestParam(required = false) String nom,
+            @RequestParam(required = false) String prenoms,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateNaissance) {
+        return ResponseEntity.ok(ppService.verifierExistence(matricule, nom, prenoms, dateNaissance));
+    }
+
+    @GetMapping("/mes-fiches")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<Page<PersonnePhysiqueResponse>> mesFiches(
+            @RequestParam(required = false) String statut,
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(ppService.rechercherMesFiches(userId, statut, pageable));
+    }
+
+    // MODIFIÉ : cloisonnement des fiches non actives. Avant, un agent ou un
+    // validateur pouvait appeler cet endpoint avec n'importe quel statut
+    // (ex. ?statut=BROUILLON) et voir les fiches de TOUS les créateurs — la
+    // consigne métier ("une fiche créée par un agent est personnelle") n'était
+    // donc pas réellement appliquée, seulement contournable via /mes-fiches.
+    // Règle désormais appliquée :
+    //   - rôle public          -> ACTIVE uniquement (inchangé)
+    //   - administrateur       -> aucune restriction (supervision globale)
+    //   - validateur seul + statut=EN_ATTENTE_VALIDATION -> file de validation complète
+    //   - statut=ACTIVE (registre officiel) -> jamais restreint, visible par tout rôle interne
+    //   - tout le reste (agent, ou validateur hors file d'attente) -> uniquement ses propres fiches
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
+    public ResponseEntity<Page<?>> rechercher(
+            @RequestParam(required = false) String nom,
+            @RequestParam(required = false) UUID entiteId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) String statut,
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal Jwt jwt) {
+        boolean isPublicOnly = JwtRoleUtils.estRolePublicUniquement(jwt);
+        if (isPublicOnly) {
+            return ResponseEntity.ok(ppService.rechercherFichesPublic(nom, entiteId, regionId, "ACTIVE", pageable));
+        }
+
+        boolean isAdmin = JwtRoleUtils.estAdministrateur(jwt);
+        if (!isAdmin) {
+            boolean isValidateurOnly = JwtRoleUtils.estValidateurUniquement(jwt);
+            boolean demandeFileValidation = isValidateurOnly && "EN_ATTENTE_VALIDATION".equals(statut);
+            boolean demandeRegistreActif = "ACTIVE".equals(statut);
+
+            if (!demandeFileValidation && !demandeRegistreActif) {
+                String userId = jwt.getSubject();
+                return ResponseEntity.ok(ppService.rechercherMesFiches(userId, statut, pageable));
+            }
+        }
+
+        return ResponseEntity.ok(ppService.rechercherFichesInterne(nom, entiteId, regionId, statut, pageable));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
+    public ResponseEntity<?> consulter(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        boolean isPublicOnly = JwtRoleUtils.estRolePublicUniquement(jwt);
+        if (isPublicOnly) {
+            return ResponseEntity.ok(ppService.obtenirFichePourAffichagePublic(id));
+        }
+        return ResponseEntity.ok(ppService.obtenirFichePourAffichage(id));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PersonnePhysiqueResponse> modifier(
+            @PathVariable UUID id, @Valid @RequestBody PersonnePhysiqueRequest req, @AuthenticationPrincipal Jwt jwt) {
+        PersonnePhysiqueResponse response = ppService.modifierFiche(id, req);
+        auditService.log(jwt, "MODIFICATION_FICHE_PP", "PersonnePhysique", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/soumettre")
+    @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<PersonnePhysiqueResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        PersonnePhysiqueResponse response = ppService.soumettreFiche(id, agentId);
+        auditService.log(jwt, "SOUMISSION_FICHE", "PersonnePhysique", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/valider")
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<PersonnePhysiqueResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        PersonnePhysiqueResponse response = ppService.validerFiche(id, validateurId);
+        auditService.log(jwt, "VALIDATION_FICHE", "PersonnePhysique", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/rejeter")
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<PersonnePhysiqueResponse> rejeter(
+            @PathVariable UUID id, @RequestParam String motif, @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        PersonnePhysiqueResponse response = ppService.rejeterFiche(id, motif, validateurId);
+        auditService.log(jwt, "REJET_FICHE", "PersonnePhysique", id.toString(), motif, request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/statut-judiciaire")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PersonnePhysiqueResponse> modifierStatutJudiciaire(
+            @PathVariable UUID id, @Valid @RequestBody StatutJudiciaireRequest req, @AuthenticationPrincipal Jwt jwt) {
+        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        PersonnePhysiqueResponse response = ppService.modifierStatutJudiciaireFiche(id, req, agentId);
+        auditService.log(jwt, "MODIFICATION_STATUT_JUDICIAIRE", "PersonnePhysique", id.toString(),
+                "Nouveau statut : " + req.getStatutJudiciaire(), request.getRemoteAddr());
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}/archiver")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Void> archiver(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        ppService.archiver(id);
+        auditService.log(jwt, "ARCHIVAGE_FICHE", "PersonnePhysique", id.toString(), null, request.getRemoteAddr());
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/PieceJointeController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.PieceJointeRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.PieceJointeResponse;
+import bf.gov.ascelc.logintegrite_backend.service.PieceJointeService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping(ApiURLs.API_V1_ROOT + "/pieces-jointes")
+@RequiredArgsConstructor
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+public class PieceJointeController {
+
+    private final PieceJointeService service;
+
+    // MODIFIÉ : infractionId ajouté en paramètre optionnel
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PieceJointeResponse> uploadFichier(
+            @RequestParam(value = "ficheId", required = false) UUID ficheId,
+            @RequestParam(value = "infractionId", required = false) UUID infractionId,
+            @RequestParam("file") MultipartFile file) {
+        return new ResponseEntity<>(service.enregistrerFichierPhysique(ficheId, infractionId, file), HttpStatus.CREATED);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PieceJointeResponse> create(@Valid @RequestBody PieceJointeRequest request) {
+        return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<PieceJointeResponse> update(@PathVariable UUID id, @Valid @RequestBody PieceJointeRequest request) {
+        return ResponseEntity.ok(service.update(id, request));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PieceJointeResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<PieceJointeResponse>> getAll() {
+        return ResponseEntity.ok(service.getAll());
+    }
+
+    @GetMapping("/fiche/{ficheId}")
+    public ResponseEntity<List<PieceJointeResponse>> getByFicheId(@PathVariable UUID ficheId) {
+        return ResponseEntity.ok(service.getByFicheId(ficheId));
+    }
+
+    // AJOUT : pièces jointes d'une infraction précise
+    @GetMapping("/infraction/{infractionId}")
+    public ResponseEntity<List<PieceJointeResponse>> getByInfractionId(@PathVariable UUID infractionId) {
+        return ResponseEntity.ok(service.getByInfractionId(infractionId));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/RapportController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.response.FicheExportResponse;
+import bf.gov.ascelc.logintegrite_backend.service.RapportService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
+import java.util.List;
+
+import static bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs.*;
+
+@RestController
+@RequestMapping(RAPPORTS) // "/api/v1/rapports"
+@RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
+public class RapportController {
+
+    private final RapportService rapportService;
+
+    @GetMapping(RAPPORTS_PDF) // "/pdf"
+    public ResponseEntity<byte[]> exporterPDF(@RequestParam(defaultValue = "Rapport des Mises en Cause") String titre) throws IOException {
+        // On récupère une liste de DTOs propres construits par le service
+        List<FicheExportResponse> fiches = rapportService.getFichesActivesPourExport();
+        byte[] pdfContenu = rapportService.genererPDF(titre, fiches);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"rapport.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfContenu);
+    }
+
+    @GetMapping(RAPPORTS_EXCEL) // "/excel"
+    public ResponseEntity<byte[]> exporterExcel(@RequestParam(defaultValue = "Export Log Intégrité") String titre) throws IOException {
+        List<FicheExportResponse> fiches = rapportService.getFichesActivesPourExport();
+        byte[] excelContenu = rapportService.genererExcel(titre, fiches);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"rapport.xlsx\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(excelContenu);
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/RechercheSauvegardeeController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.RechercheSauvegardeeRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.RechercheSauvegardeeResponse;
+import bf.gov.ascelc.logintegrite_backend.service.RechercheSauvegardeeService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+// Racine : /api/v1/recherches-sauvegardees
+@RequestMapping(ApiURLs.API_V1_ROOT + "/recherches-sauvegardees")
+@RequiredArgsConstructor
+public class RechercheSauvegardeeController {
+
+    private final RechercheSauvegardeeService service;
+
+    @PostMapping
+    public ResponseEntity<RechercheSauvegardeeResponse> create(@Valid @RequestBody RechercheSauvegardeeRequest request) {
+        return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
+    }
+
+    //  transmet l'utilisateur courant pour le contrôle de propriété (IDOR)
+    @PutMapping("/{id}")
+    public ResponseEntity<RechercheSauvegardeeResponse> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody RechercheSauvegardeeRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(service.update(id, request, userId));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<RechercheSauvegardeeResponse> getById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(service.getById(id, userId));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<List<RechercheSauvegardeeResponse>> getMySearches(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        return ResponseEntity.ok(service.getMySearches(userId));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        service.delete(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/ReferentielController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.response.ReferentielResponse;
+import bf.gov.ascelc.logintegrite_backend.repository.EntiteOrganisationRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs.*;
+
+@RestController
+@RequestMapping(REFERENTIEL) // Dynamiquement aligné sur "/api/v1/referentiel"
+@RequiredArgsConstructor
+public class ReferentielController {
+
+    private final EntiteOrganisationRepository entiteRepo;
+
+    @GetMapping(REFERENTIEL_ENTITES) // Équivaut à "/entites" -> URL finale: /api/v1/referentiel/entites
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<ReferentielResponse>> entites() {
+        List<ReferentielResponse> responses = entiteRepo.findByActifTrue().stream()
+                .map(entite -> new ReferentielResponse(
+                        entite.getId(),
+                        entite.getCode() + " - " + entite.getNom()
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/RegionController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.RegionRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.RegionResponse;
+import bf.gov.ascelc.logintegrite_backend.service.RegionService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+// Racine : /api/v1/referentiel/regions
+@RequestMapping(ApiURLs.REFERENTIEL + ApiURLs.REFERENTIEL_REGIONS)
+@RequiredArgsConstructor
+public class RegionController {
+
+    private final RegionService service;
+
+
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<RegionResponse> create(@Valid @RequestBody RegionRequest request) {
+        return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<RegionResponse> update(@PathVariable UUID id, @Valid @RequestBody RegionRequest request) {
+        return ResponseEntity.ok(service.update(id, request));
+    }
+
+    // Lecture ouverte à tous les rôles internes, pas de restriction nécessaire
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<RegionResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getById(id));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<List<RegionResponse>> getAll() {
+        return ResponseEntity.ok(service.getAll());
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/SauvegardeController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.SauvegardeRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.SauvegardeResponse;
+import bf.gov.ascelc.logintegrite_backend.service.SauvegardeService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs; // Importation de tes constantes
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping(ApiURLs.SAUVEGARDES) // Aligné dynamiquement sur "/api/v1/sauvegardes"
+@RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMINISTRATEUR')")
+public class SauvegardeController {
+
+    private final SauvegardeService service;
+
+    @PostMapping("/debut")
+    public ResponseEntity<SauvegardeResponse> registrarDebut(@Valid @RequestBody SauvegardeRequest request) {
+        return new ResponseEntity<>(service.registrarDebut(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}/fin")
+    public ResponseEntity<SauvegardeResponse> registrarFin(
+            @PathVariable UUID id,
+            @RequestParam String statut,
+            @RequestParam(required = false) LocalDateTime dateFin) {
+
+        LocalDateTime heureFin = (dateFin != null) ? dateFin : LocalDateTime.now();
+        return ResponseEntity.ok(service.registrarFin(id, statut, heureFin));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<SauvegardeResponse>> getHistorique() {
+        return ResponseEntity.ok(service.getHistorique());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<SauvegardeResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getById(id));
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/StatistiqueController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.StatistiqueRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.StatistiqueResponse;
+import bf.gov.ascelc.logintegrite_backend.service.StatistiqueService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import static bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs.*;
+
+@RestController
+@RequestMapping(STATISTIQUES)
+@RequiredArgsConstructor
+public class StatistiqueController {
+
+    private final StatistiqueService statistiqueService;
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','VALIDATEUR','AGENT')")
+    public ResponseEntity<StatistiqueResponse> tableauDeBord(StatistiqueRequest filtres) {
+        // On passe l'objet de requête contenant les filtres optionnels au service
+        return ResponseEntity.ok(statistiqueService.calculer(filtres));
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/StatutJudiciaireReferentielController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireReferentielRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.StatutJudiciaireReferentielResponse;
+import bf.gov.ascelc.logintegrite_backend.service.StatutJudiciaireReferentielService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+// Racine : /api/v1/referentiel/statuts-judiciaires
+@RequestMapping(ApiURLs.REFERENTIEL + ApiURLs.REFERENTIEL_STATUTS_JUDICIAIRES)
+@RequiredArgsConstructor
+public class StatutJudiciaireReferentielController {
+
+    private final StatutJudiciaireReferentielService service;
+
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<StatutJudiciaireReferentielResponse> create(@Valid @RequestBody StatutJudiciaireReferentielRequest request) {
+        return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<StatutJudiciaireReferentielResponse> update(@PathVariable UUID id, @Valid @RequestBody StatutJudiciaireReferentielRequest request) {
+        return ResponseEntity.ok(service.update(id, request));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<StatutJudiciaireReferentielResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getById(id));
+    }
+
+    // Liste complète (écran d'administration du référentiel)
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<List<StatutJudiciaireReferentielResponse>> getAll() {
+        return ResponseEntity.ok(service.getAll());
+    }
+
+    // Liste restreinte aux statuts actifs : alimente le <select> du formulaire d'historique
+    @GetMapping("/actifs")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<List<StatutJudiciaireReferentielResponse>> getAllActifs() {
+        return ResponseEntity.ok(service.getAllActifs());
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/TypeInfractionController.java =====
+package bf.gov.ascelc.logintegrite_backend.controller;
+
+import bf.gov.ascelc.logintegrite_backend.dto.request.TypeInfractionRequest;
+import bf.gov.ascelc.logintegrite_backend.dto.response.TypeInfractionResponse;
+import bf.gov.ascelc.logintegrite_backend.service.TypeInfractionService;
+import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+// Racine : /api/v1/referentiel/types-infraction
+@RequestMapping(ApiURLs.REFERENTIEL + ApiURLs.REFERENTIEL_TYPES_INFRACTION)
+@RequiredArgsConstructor
+public class TypeInfractionController {
+
+    private final TypeInfractionService service;
+
+    // AJOUT : aucune protection avant
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<TypeInfractionResponse> create(@Valid @RequestBody TypeInfractionRequest request) {
+        return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<TypeInfractionResponse> update(@PathVariable UUID id, @Valid @RequestBody TypeInfractionRequest request) {
+        return ResponseEntity.ok(service.update(id, request));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<TypeInfractionResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getById(id));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<List<TypeInfractionResponse>> getAll() {
+        return ResponseEntity.ok(service.getAll());
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
+

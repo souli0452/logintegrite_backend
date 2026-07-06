@@ -14,6 +14,9 @@ import java.util.List;
 )
 public interface PersonnePhysiqueMapper {
 
+    @Mapping(target = "typeFiche", constant = "PM")
+    @Mapping(target = "regionNom", source = "region.nom")
+    @Mapping(target = "entiteNom", source = "entite.nom")
     PersonnePhysiqueResponse toResponse(PersonnePhysique entity);
 
     PersonnePhysiquePublicResponse toPublicResponse(PersonnePhysique entity);

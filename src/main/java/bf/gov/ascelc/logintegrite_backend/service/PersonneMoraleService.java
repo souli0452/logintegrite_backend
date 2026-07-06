@@ -26,8 +26,13 @@ public interface PersonneMoraleService extends FicheMiseEnCauseService {
     Page<PersonneMoraleResponse> rechercherMesFiches(String userId, String statut, Pageable pageable);
 
     List<PersonneMorale> listerRecentesBrouillonsOuSoumises(String userId, int limite);
-    // AJOUT : équivalent PM
+
     List<PersonneMorale> listerRecentesValideesOuRejeteesParValidateur(String validateurId, int limite);
+    long compterDecisionsParValidateur(String validateurId, String statutFiche);
+
+    // AJOUT : Liste complète des décisions prises par un validateur pour alimenter les graphiques
+    List<PersonneMorale> listerDecisionsParValidateur(String validateurId, String statutFiche);
+
 
     PersonneMorale creer(PersonneMorale pm);
     PersonneMorale modifier(UUID id, PersonneMorale pm);

@@ -25,6 +25,8 @@ public final class ApiURLs {
 
     // AJOUT : actions rapides du validateur (fiches qu'IL a validées/rejetées)
     public static final String FICHES_MES_ACTIONS_VALIDATEUR = "/mes-actions-validateur";
+    public static final String FICHES_MES_DECISIONS_COMPTEUR = "/mes-decisions-compteur";
+    public static final String FICHES_MES_DECISIONS = "/mes-decisions";
 
     public static final String PERSONNES_MORALES = API_V1_ROOT + "/personnes-morales";
     public static final String PERSONNES_MORALES_RECHERCHE = "/recherche";
