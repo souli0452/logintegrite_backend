@@ -7,6 +7,7 @@ import bf.gov.ascelc.logintegrite_backend.dto.response.PersonneMoraleResponse;
 import bf.gov.ascelc.logintegrite_backend.dto.response.VerificationExistenceResponse;
 import bf.gov.ascelc.logintegrite_backend.service.AuditService;
 import bf.gov.ascelc.logintegrite_backend.service.PersonneMoraleService;
+import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -30,6 +31,8 @@ public class PersonneMoraleController {
     private final PersonneMoraleService pmService;
     private final AuditService auditService;
     private final HttpServletRequest request;
+    private final NotificationService notificationService;
+
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
@@ -112,8 +115,12 @@ public class PersonneMoraleController {
     @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
     public ResponseEntity<PersonneMoraleResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        String username = jwt != null ? jwt.getClaimAsString("preferred_username") : "SYSTEM";
         PersonneMoraleResponse response = pmService.soumettreFiche(id, agentId);
         auditService.log(jwt, "SOUMISSION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
+        notificationService.notifierRole("VALIDATEUR", "SOUMISSION_FICHE",
+                "La fiche " + response.getRaisonSociale() + " a été soumise par " + username + " et attend votre validation.",
+                id.toString(), "PersonneMorale");
         return ResponseEntity.ok(response);
     }
 
@@ -123,6 +130,9 @@ public class PersonneMoraleController {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
         PersonneMoraleResponse response = pmService.validerFiche(id, validateurId);
         auditService.log(jwt, "VALIDATION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
+        notificationService.notifierUtilisateur(response.getCreatedById(), "VALIDATION_FICHE",
+                "Votre fiche " + response.getRaisonSociale() + " a été validée.",
+                id.toString(), "PersonneMorale");
         return ResponseEntity.ok(response);
     }
 
@@ -133,6 +143,9 @@ public class PersonneMoraleController {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
         PersonneMoraleResponse response = pmService.rejeterFiche(id, motif, validateurId);
         auditService.log(jwt, "REJET_FICHE", "PersonneMorale", id.toString(), motif, request.getRemoteAddr());
+        notificationService.notifierUtilisateur(response.getCreatedById(), "REJET_FICHE",
+                "Votre fiche " + response.getRaisonSociale() + " a été rejetée. Motif : " + motif,
+                id.toString(), "PersonneMorale");
         return ResponseEntity.ok(response);
     }
 

@@ -21,4 +21,7 @@ public class FicheMiseEnCauseResponse extends AuditEntityDto {
     private String statutFiche;
     private String statutJudiciaire;
     private LocalDateTime dateModification;
+    private String photoUrl;                      
+    private String natureInfractionPrincipale;    
+    private Integer nombreInfractions; 
 }

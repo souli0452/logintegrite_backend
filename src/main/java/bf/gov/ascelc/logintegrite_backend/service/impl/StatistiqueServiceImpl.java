@@ -61,9 +61,8 @@ public class StatistiqueServiceImpl implements StatistiqueService {
         long rejetees = ficheRepo.countByStatutFiltre("REJETE", regionId, entiteId, typeInfractionId, debut, fin);
 
         Map<String, Long> parTypeFiche = new LinkedHashMap<>();
-        parTypeFiche.put("PERSONNE_PHYSIQUE", ppRepo.countFiltre(regionId, entiteId, typeInfractionId, debut, fin));
-        parTypeFiche.put("PERSONNE_MORALE", pmRepo.countFiltre(regionId, entiteId, typeInfractionId, debut, fin));
-
+parTypeFiche.put("PERSONNE_PHYSIQUE", ppRepo.countFiltre(regionId, entiteId, typeInfractionId, statut, debut, fin));
+parTypeFiche.put("PERSONNE_MORALE", pmRepo.countFiltre(regionId, entiteId, typeInfractionId, statut, debut, fin));
         // MODIFIÉ (statistiques "intelligentes") : les requêtes de comptage
         // (countGroupByRegion/Entite/TypeInfraction) partent des fiches et
         // ne renvoient donc que les référentiels déjà utilisés. Un référentiel
@@ -81,12 +80,13 @@ public class StatistiqueServiceImpl implements StatistiqueService {
         List<String> tousTypesInfraction = typeInfractionRepo.findAll().stream()
                 .map(TypeInfraction::getLibelle).collect(Collectors.toList());
 
+        // MODIFICATION : ajout du paramètre statut
         Map<String, Long> parRegion = avecReferentielsComplets(toutesRegions,
-                ficheRepo.countGroupByRegion(entiteId, typeInfractionId, debut, fin));
+                ficheRepo.countGroupByRegion(entiteId, typeInfractionId, statut, debut, fin));
         Map<String, Long> parEntite = avecReferentielsComplets(toutesEntites,
-                ficheRepo.countGroupByEntite(regionId, typeInfractionId, debut, fin));
+                ficheRepo.countGroupByEntite(regionId, typeInfractionId, statut, debut, fin));
         Map<String, Long> parInfraction = avecReferentielsComplets(tousTypesInfraction,
-                infractionRepo.countGroupByTypeInfraction(regionId, entiteId, debut, fin));
+                infractionRepo.countGroupByTypeInfraction(regionId, entiteId, statut, debut, fin));
 
         Map<String, Long> repartitionParametrable = switch (groupBy) {
             case "ENTITE" -> trierParValeurDecroissante(parEntite);
@@ -99,7 +99,8 @@ public class StatistiqueServiceImpl implements StatistiqueService {
 
         // top5Entites reste basé sur les comptes réels uniquement (un "top 5"
         // n'a pas de sens rempli d'entités à zéro fiche)
-        Map<String, Long> top5Entites = versMap(ficheRepo.countGroupByEntite(regionId, typeInfractionId, debut, fin))
+        // MODIFICATION : ajout du paramètre statut
+        Map<String, Long> top5Entites = versMap(ficheRepo.countGroupByEntite(regionId, typeInfractionId, statut, debut, fin))
                 .entrySet().stream()
                 .limit(5)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));

@@ -26,5 +26,11 @@ public class Notification extends AuditEntity {
     @Builder.Default
     private Boolean lue = false;
 
-    // Note : 'dateEnvoi' est remplacé par 'createdAt' hérité.
+    // AJOUT : symétrique à JournalAudit.ressourceId/ressourceType — permet
+    // au front de naviguer directement vers la fiche depuis la notification.
+    @Column(length = 100)
+    private String ressourceId;
+
+    @Column(length = 50)
+    private String ressourceType;
 }

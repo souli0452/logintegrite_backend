@@ -12,6 +12,7 @@ import bf.gov.ascelc.logintegrite_backend.service.FicheMiseEnCauseService;
 import bf.gov.ascelc.logintegrite_backend.service.PersonnePhysiqueService;
 import bf.gov.ascelc.logintegrite_backend.service.PersonneMoraleService;
 import bf.gov.ascelc.logintegrite_backend.mapper.FicheMiseEnCauseMapper;
+import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -42,20 +43,26 @@ public class FicheMiseEnCauseController {
     private final PersonneMoraleService pmService;
     private final AuditService auditService;
     private final HttpServletRequest request;
+    private final NotificationService notificationService;
+
 
     public FicheMiseEnCauseController(
+
             @Qualifier("ficheMiseEnCauseServiceImpl") FicheMiseEnCauseService ficheService,
             FicheMiseEnCauseMapper ficheMapper,
             PersonnePhysiqueService ppService,
             PersonneMoraleService pmService,
             AuditService auditService,
+            NotificationService notificationService,
             HttpServletRequest request) {
         this.ficheService = ficheService;
         this.ficheMapper = ficheMapper;
         this.ppService = ppService;
         this.pmService = pmService;
         this.auditService = auditService;
+        this.notificationService = notificationService;
         this.request = request;
+
     }
 
     @GetMapping
@@ -95,13 +102,13 @@ public class FicheMiseEnCauseController {
     // par tous — décision : identifiantUnique reste visible au public, ce
     // DTO n'expose pas de données sensibles comme la date de naissance).
     @GetMapping(ApiURLs.FICHES_RECHERCHE)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
     public ResponseEntity<Page<FicheMiseEnCauseResponse>> registreOfficiel(
             @RequestParam(required = false) String recherche,
             @RequestParam(required = false) UUID regionId,
             @RequestParam(required = false) UUID entiteId,
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(ficheService.rechercherRegistreOfficiel(recherche, regionId, entiteId, pageable));
+            @RequestParam(required = false) String typeFiche,
+            Pageable pageable) {
+        return ResponseEntity.ok(ficheService.rechercherRegistreOfficiel(recherche, regionId, entiteId, typeFiche, pageable));
     }
 
     // Les 5 dernières fiches BROUILLON/EN_ATTENTE_VALIDATION créées par
@@ -137,9 +144,14 @@ public class FicheMiseEnCauseController {
     @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
     public ResponseEntity<FicheMiseEnCauseResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+        String username = jwt != null ? jwt.getClaimAsString("preferred_username") : "SYSTEM";
         FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.soumettre(id, agentId));
         auditService.log(jwt, "SOUMISSION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
+        notificationService.notifierRole("VALIDATEUR", "SOUMISSION_FICHE",
+                "La fiche " + response.getCibleNom() + " a été soumise par " + username + " et attend votre validation.",
+                id.toString(), response.getTypeFiche());
         return ResponseEntity.ok(response);
+
     }
 
     @GetMapping(ApiURLs.FICHES_A_VALIDER)
@@ -186,9 +198,27 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(total);
     }
 
-    // Route vers le service spécialisé selon le type réel de la fiche, pour
-    // que le contrôle anti-doublon (matricule/IFU) s'applique quel que soit
-    // le point d'entrée utilisé.
+    // AJOUT : liste complète des décisions personnelles du validateur (PP+PM),
+    // filtrée par statut — alimente "Mes Rejets" / "Validées par moi" côté
+    // frontend (FicheService.getMesDecisions()). Miroir de
+    // mesActionsValidateur() ci-dessus, mais sans limite à 5 ni tri : ici
+    // c'est une liste consultable en entier, pas un aperçu "actions rapides".
+    @GetMapping(ApiURLs.FICHES_MES_DECISIONS)
+    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+    public ResponseEntity<List<FicheMiseEnCauseResponse>> mesDecisions(
+            @RequestParam String statut, @AuthenticationPrincipal Jwt jwt) {
+        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+
+        List<FicheMiseEnCauseResponse> combinees = new ArrayList<>();
+        combinees.addAll(ppService.listerDecisionsParValidateur(validateurId, statut).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+        combinees.addAll(pmService.listerDecisionsParValidateur(validateurId, statut).stream()
+                .map(ficheMapper::toResponse).collect(Collectors.toList()));
+
+        return ResponseEntity.ok(combinees);
+    }
+
+    // valider() mis à jour
     @PutMapping(ApiURLs.FICHES_VALIDER)
     @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
     public ResponseEntity<FicheMiseEnCauseResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
@@ -205,10 +235,11 @@ public class FicheMiseEnCauseController {
                     "Type de fiche non pris en charge pour la validation : " + ficheExistante.getClass().getSimpleName());
         }
 
-
-
         FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheValidee);
         auditService.log(jwt, "VALIDATION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
+        notificationService.notifierUtilisateur(response.getCreatedById(), "VALIDATION_FICHE",
+                "Votre fiche " + response.getCibleNom() + " a été validée.",
+                id.toString(), response.getTypeFiche());
         return ResponseEntity.ok(response);
     }
 
@@ -219,6 +250,9 @@ public class FicheMiseEnCauseController {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
         FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.rejeter(id, motif, validateurId));
         auditService.log(jwt, "REJET_FICHE", response.getTypeFiche(), id.toString(), motif, request.getRemoteAddr());
+        notificationService.notifierUtilisateur(response.getCreatedById(), "REJET_FICHE",
+                "Votre fiche " + response.getCibleNom() + " a été rejetée. Motif : " + motif,
+                id.toString(), response.getTypeFiche());
         return ResponseEntity.ok(response);
     }
 

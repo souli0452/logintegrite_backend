@@ -19,4 +19,11 @@ public class NotificationRequest {
 
     @NotBlank(message = "Le contenu de la notification est obligatoire")
     private String contenu;
+
+    // AJOUT (facultatif)
+    @Size(max = 100)
+    private String ressourceId;
+
+    @Size(max = 50)
+    private String ressourceType;
 }

@@ -18,15 +18,23 @@ public interface InfractionRepository extends JpaRepository<Infraction, UUID> {
     List<Infraction> findByFicheId(UUID ficheId);
 
     @Query("SELECT COALESCE(ti.libelle, i.nature), COUNT(i) FROM Infraction i " +
-            "JOIN i.fiche f LEFT JOIN i.typeInfraction ti WHERE " +
-            "(:regionId IS NULL OR f.region.id = :regionId) AND " +
-            "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
-            "(CAST(:dateDebut AS timestamp) IS NULL OR i.createdAt >= :dateDebut) AND " +
-            "(CAST(:dateFin AS timestamp) IS NULL OR i.createdAt <= :dateFin) " +
-            "GROUP BY COALESCE(ti.libelle, i.nature) ORDER BY COUNT(i) DESC")
-    List<Object[]> countGroupByTypeInfraction(
-            @Param("regionId") UUID regionId,
-            @Param("entiteId") UUID entiteId,
-            @Param("dateDebut") LocalDateTime dateDebut,
-            @Param("dateFin") LocalDateTime dateFin);
+        "JOIN i.fiche f LEFT JOIN i.typeInfraction ti WHERE " +
+        "(:regionId IS NULL OR f.region.id = :regionId) AND " +
+        "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
+        "(CAST(:statut AS text) IS NULL OR f.statutFiche = :statut) AND " +
+        "(CAST(:dateDebut AS timestamp) IS NULL OR i.createdAt >= :dateDebut) AND " +
+        "(CAST(:dateFin AS timestamp) IS NULL OR i.createdAt <= :dateFin) " +
+        "GROUP BY COALESCE(ti.libelle, i.nature) ORDER BY COUNT(i) DESC")
+List<Object[]> countGroupByTypeInfraction(
+        @Param("regionId") UUID regionId,
+        @Param("entiteId") UUID entiteId,
+        @Param("statut") String statut,
+        @Param("dateDebut") LocalDateTime dateDebut,
+        @Param("dateFin") LocalDateTime dateFin);
+        
+        @Query("SELECT i.fiche.id, COALESCE(ti.libelle, i.nature) FROM Infraction i " +
+       "LEFT JOIN i.typeInfraction ti " +
+       "WHERE i.fiche.id IN :ficheIds " +
+       "ORDER BY i.fiche.id, i.dateFaits DESC")
+List<Object[]> trouverNaturesPourFiches(@Param("ficheIds") List<UUID> ficheIds);
 }

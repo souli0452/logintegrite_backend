@@ -6,6 +6,7 @@ import bf.gov.ascelc.logintegrite_backend.entity.Notification;
 import bf.gov.ascelc.logintegrite_backend.exception.ResourceNotFoundException;
 import bf.gov.ascelc.logintegrite_backend.mapper.NotificationMapper;
 import bf.gov.ascelc.logintegrite_backend.repository.NotificationRepository;
+import bf.gov.ascelc.logintegrite_backend.service.KeycloakAdminService;
 import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -23,6 +24,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository repository;
     private final NotificationMapper mapper;
+    private final KeycloakAdminService keycloakAdminService; // AJOUT
 
     @Override
     public NotificationResponse create(NotificationRequest request) {
@@ -58,17 +60,13 @@ public class NotificationServiceImpl implements NotificationService {
     public NotificationResponse markAsRead(UUID id, String userId) {
         Notification entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification non trouvée avec l'id : " + id));
-
-        // Contrôle de propriété ajouté ici (IDOR)
         verifierDestinataire(entity, userId);
-
         entity.setLue(true);
         return mapper.toResponse(repository.save(entity));
     }
 
     @Override
     public void markAllAsRead(String destinataireId) {
-        // Pas de contrôle supplémentaire nécessaire : la requête est déjà filtrée par destinataireId
         List<Notification> unread = repository.findByDestinataireIdAndLueFalseOrderByCreatedAtDesc(destinataireId);
         unread.forEach(notification -> notification.setLue(true));
         repository.saveAll(unread);
@@ -78,14 +76,32 @@ public class NotificationServiceImpl implements NotificationService {
     public void delete(UUID id, String userId) {
         Notification entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification non trouvée avec l'id : " + id));
-
-        // Contrôle de propriété ajouté ici (IDOR)
         verifierDestinataire(entity, userId);
-
         repository.delete(entity);
     }
 
-    // Vérifie que la notification appartient bien à l'utilisateur courant
+    // AJOUT
+    @Override
+    public void notifierUtilisateur(String destinataireId, String type, String contenu, String ressourceId, String ressourceType) {
+        if (destinataireId == null || destinataireId.isBlank()) {
+            return;
+        }
+        create(NotificationRequest.builder()
+                .destinataireId(destinataireId)
+                .type(type)
+                .contenu(contenu)
+                .ressourceId(ressourceId)
+                .ressourceType(ressourceType)
+                .build());
+    }
+
+    // AJOUT
+    @Override
+    public void notifierRole(String role, String type, String contenu, String ressourceId, String ressourceType) {
+        keycloakAdminService.listerIdsUtilisateursParRole(role)
+                .forEach(destinataireId -> notifierUtilisateur(destinataireId, type, contenu, ressourceId, ressourceType));
+    }
+
     private void verifierDestinataire(Notification entity, String userId) {
         if (entity.getDestinataireId() == null || !entity.getDestinataireId().equals(userId)) {
             throw new AccessDeniedException(

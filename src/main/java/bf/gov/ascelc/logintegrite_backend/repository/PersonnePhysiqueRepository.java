@@ -71,18 +71,20 @@ public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysiq
             Pageable pageable);
 
     @Query("SELECT COUNT(DISTINCT p) FROM PersonnePhysique p " +
-            "LEFT JOIN p.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
-            "(:regionId IS NULL OR p.region.id = :regionId) AND " +
-            "(:entiteId IS NULL OR p.entite.id = :entiteId) AND " +
-            "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
-            "(CAST(:dateDebut AS timestamp) IS NULL OR p.createdAt >= :dateDebut) AND " +
-            "(CAST(:dateFin AS timestamp) IS NULL OR p.createdAt <= :dateFin)")
-    long countFiltre(
-            @Param("regionId") UUID regionId,
-            @Param("entiteId") UUID entiteId,
-            @Param("typeInfractionId") UUID typeInfractionId,
-            @Param("dateDebut") LocalDateTime dateDebut,
-            @Param("dateFin") LocalDateTime dateFin);
+        "LEFT JOIN p.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
+        "(:regionId IS NULL OR p.region.id = :regionId) AND " +
+        "(:entiteId IS NULL OR p.entite.id = :entiteId) AND " +
+        "(:typeInfractionId IS NULL OR ti.id = :typeInfractionId) AND " +
+        "(CAST(:statut AS text) IS NULL OR p.statutFiche = :statut) AND " +
+        "(CAST(:dateDebut AS timestamp) IS NULL OR p.createdAt >= :dateDebut) AND " +
+        "(CAST(:dateFin AS timestamp) IS NULL OR p.createdAt <= :dateFin)")
+long countFiltre(
+        @Param("regionId") UUID regionId,
+        @Param("entiteId") UUID entiteId,
+        @Param("typeInfractionId") UUID typeInfractionId,
+        @Param("statut") String statut,
+        @Param("dateDebut") LocalDateTime dateDebut,
+        @Param("dateFin") LocalDateTime dateFin);
 
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT p FROM PersonnePhysique p WHERE p.createdById = :userId AND " +

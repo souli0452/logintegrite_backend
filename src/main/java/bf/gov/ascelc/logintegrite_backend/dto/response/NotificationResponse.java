@@ -17,4 +17,8 @@ public class NotificationResponse extends AuditEntityDto {
     private String type;
     private String contenu;
     private Boolean lue;
+
+    // AJOUT
+    private String ressourceId;
+    private String ressourceType;
 }

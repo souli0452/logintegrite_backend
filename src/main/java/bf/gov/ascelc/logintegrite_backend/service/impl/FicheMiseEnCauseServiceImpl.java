@@ -6,6 +6,7 @@ import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.FicheMiseEnCauseResponse;
 import bf.gov.ascelc.logintegrite_backend.mapper.FicheMiseEnCauseMapper;
 import bf.gov.ascelc.logintegrite_backend.repository.FicheMiseEnCauseRepository;
+import bf.gov.ascelc.logintegrite_backend.repository.InfractionRepository;
 import bf.gov.ascelc.logintegrite_backend.service.FicheMiseEnCauseService;
 import bf.gov.ascelc.logintegrite_backend.service.HistoriqueStatutService;
 import jakarta.persistence.EntityNotFoundException;
@@ -16,6 +17,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,6 +30,7 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
     private final FicheMiseEnCauseRepository ficheRepo;
     private final FicheMiseEnCauseMapper ficheMapper;
     private final HistoriqueStatutService historiqueStatutService;
+    private final InfractionRepository infractionRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -132,9 +138,42 @@ public class FicheMiseEnCauseServiceImpl implements FicheMiseEnCauseService {
     @Override
     @Transactional(readOnly = true)
     public Page<FicheMiseEnCauseResponse> rechercherRegistreOfficiel(
-            String recherche, UUID regionId, UUID entiteId, Pageable pageable) {
-        return ficheRepo.rechercheRegistreOfficiel(regionId, entiteId, recherche, pageable)
+            String recherche, UUID regionId, UUID entiteId, String typeFiche, Pageable pageable) {
+
+        Page<FicheMiseEnCauseResponse> page = ficheRepo
+                .rechercheRegistreOfficiel(regionId, entiteId, typeFiche, recherche, pageable)
                 .map(ficheMapper::toResponse);
+
+        enrichirNatureInfraction(page.getContent());
+
+        return page;
+    }
+
+    // AJOUT : enrichissement post-mapping en 1 requête batch bornée à la page
+    // courante. fiche.getInfractions() n'est délibérément pas touché ici
+    // (lazy, non fetché dans rechercheRegistreOfficiel — un fetch join sur
+    // une collection combiné à la pagination provoquerait une pagination en
+    // mémoire côté Hibernate).
+    private void enrichirNatureInfraction(List<FicheMiseEnCauseResponse> fiches) {
+        if (fiches.isEmpty()) return;
+
+        List<UUID> ids = fiches.stream().map(FicheMiseEnCauseResponse::getId).toList();
+        List<Object[]> lignes = infractionRepository.trouverNaturesPourFiches(ids);
+
+        Map<UUID, String> naturePrincipale = new LinkedHashMap<>();
+        Map<UUID, Integer> nombreParFiche = new HashMap<>();
+
+        for (Object[] ligne : lignes) {
+            UUID ficheId = (UUID) ligne[0];
+            String nature = (String) ligne[1];
+            naturePrincipale.putIfAbsent(ficheId, nature); // 1ère occurrence = la plus récente (ORDER BY dateFaits DESC)
+            nombreParFiche.merge(ficheId, 1, Integer::sum);
+        }
+
+        fiches.forEach(f -> {
+            f.setNatureInfractionPrincipale(naturePrincipale.get(f.getId()));
+            f.setNombreInfractions(nombreParFiche.getOrDefault(f.getId(), 0));
+        });
     }
 
     // AJOUT : implémentation — réutilise rechercheGlobale (déjà présente

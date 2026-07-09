@@ -11,9 +11,13 @@ public interface NotificationService {
     List<NotificationResponse> getMyNotifications(String destinataireId);
     List<NotificationResponse> getMyUnreadNotifications(String destinataireId);
 
-    // AJOUT du paramètre userId : avant, n'importe quel utilisateur authentifié
-    // pouvait marquer comme lue ou supprimer la notification de quelqu'un d'autre (IDOR)
     NotificationResponse markAsRead(UUID id, String userId);
     void markAllAsRead(String destinataireId);
     void delete(UUID id, String userId);
+
+    // AJOUT : déclenchement métier centralisé, appelé directement depuis les
+    // contrôleurs de fiches, juste à côté des appels auditService.log() déjà
+    // existants (soumission/validation/rejet).
+    void notifierUtilisateur(String destinataireId, String type, String contenu, String ressourceId, String ressourceType);
+    void notifierRole(String role, String type, String contenu, String ressourceId, String ressourceType);
 }

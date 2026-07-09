@@ -108,8 +108,8 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
     @Override
     @Transactional(readOnly = true)
     public Page<FicheMiseEnCauseResponse> rechercherRegistreOfficiel(
-            String recherche, UUID regionId, UUID entiteId, Pageable pageable) {
-        return ficheMiseEnCauseServiceImpl.rechercherRegistreOfficiel(recherche, regionId, entiteId, pageable);
+            String recherche, UUID regionId, UUID entiteId, String typeFiche, Pageable pageable) {
+        return ficheMiseEnCauseServiceImpl.rechercherRegistreOfficiel(recherche, regionId, entiteId, typeFiche, pageable);
     }
 
     private Optional<PersonnePhysique> rechercherFicheActiveExistante(String matricule, String nom, String prenoms, LocalDate dateNaissance) {

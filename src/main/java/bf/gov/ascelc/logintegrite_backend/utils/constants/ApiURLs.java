@@ -36,6 +36,10 @@ public final class ApiURLs {
 
     public static final String AUDIT = API_V1_ROOT + "/audit";
     public static final String AUDIT_MES_ACTIONS = "/mes-actions";
+    
+    // AJOUT : effectifs par rôle Keycloak (widget "Aperçu" dashboard Admin)
+    public static final String UTILISATEURS = API_V1_ROOT + "/utilisateurs";
+    public static final String UTILISATEURS_EFFECTIFS = "/effectifs";
 
     public static final String NOTIFICATIONS = API_V1_ROOT + "/notifications";
     public static final String NOTIFICATIONS_COUNT = "/count-non-lues";
