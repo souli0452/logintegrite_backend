@@ -17,7 +17,7 @@ public class RechercheSauvegardee extends AuditEntity {
     @Column(nullable = false, length = 200)
     private String nom;
 
-    @Column(columnDefinition = "jsonb", nullable = false)
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String criteres;
 
 }

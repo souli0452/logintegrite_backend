@@ -16,4 +16,5 @@ public class TypeInfractionResponse extends AuditEntityDto {
     private String code;
     private String libelle;
     private String description;
+    private Boolean actif;
 }

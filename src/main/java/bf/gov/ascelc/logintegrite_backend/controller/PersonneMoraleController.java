@@ -6,11 +6,13 @@ import bf.gov.ascelc.logintegrite_backend.dto.request.StatutJudiciaireRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.PersonneMoraleResponse;
 import bf.gov.ascelc.logintegrite_backend.dto.response.VerificationExistenceResponse;
 import bf.gov.ascelc.logintegrite_backend.service.AuditService;
+import bf.gov.ascelc.logintegrite_backend.service.FicheEvenementNotifier;
 import bf.gov.ascelc.logintegrite_backend.service.PersonneMoraleService;
-import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -26,13 +29,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping(ApiURLs.PERSONNES_MORALES)
 @RequiredArgsConstructor
+@Validated
 public class PersonneMoraleController {
 
     private final PersonneMoraleService pmService;
     private final AuditService auditService;
     private final HttpServletRequest request;
-    private final NotificationService notificationService;
-
+    private final FicheEvenementNotifier ficheEvenementNotifier;
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
@@ -60,8 +63,6 @@ public class PersonneMoraleController {
         return ResponseEntity.ok(pmService.rechercherMesFiches(userId, statut, pageable));
     }
 
-    // MODIFIÉ : même cloisonnement que PersonnePhysiqueController.rechercher()
-    // — voir le commentaire détaillé là-bas.
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
     public ResponseEntity<Page<?>> rechercher(
@@ -115,12 +116,8 @@ public class PersonneMoraleController {
     @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
     public ResponseEntity<PersonneMoraleResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        String username = jwt != null ? jwt.getClaimAsString("preferred_username") : "SYSTEM";
         PersonneMoraleResponse response = pmService.soumettreFiche(id, agentId);
-        auditService.log(jwt, "SOUMISSION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierRole("VALIDATEUR", "SOUMISSION_FICHE",
-                "La fiche " + response.getRaisonSociale() + " a été soumise par " + username + " et attend votre validation.",
-                id.toString(), "PersonneMorale");
+        ficheEvenementNotifier.soumission(jwt, request, response, response.getRaisonSociale());
         return ResponseEntity.ok(response);
     }
 
@@ -129,23 +126,20 @@ public class PersonneMoraleController {
     public ResponseEntity<PersonneMoraleResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
         PersonneMoraleResponse response = pmService.validerFiche(id, validateurId);
-        auditService.log(jwt, "VALIDATION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "VALIDATION_FICHE",
-                "Votre fiche " + response.getRaisonSociale() + " a été validée.",
-                id.toString(), "PersonneMorale");
+        ficheEvenementNotifier.validation(jwt, request, response, response.getRaisonSociale());
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/rejeter")
     @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
     public ResponseEntity<PersonneMoraleResponse> rejeter(
-            @PathVariable UUID id, @RequestParam String motif, @AuthenticationPrincipal Jwt jwt) {
+            @PathVariable UUID id,
+            @RequestParam @NotBlank(message = "Le motif du rejet est obligatoire.")
+            @Size(min = 20, message = "Le motif du rejet doit comporter au moins 20 caractères.") String motif,
+            @AuthenticationPrincipal Jwt jwt) {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
         PersonneMoraleResponse response = pmService.rejeterFiche(id, motif, validateurId);
-        auditService.log(jwt, "REJET_FICHE", "PersonneMorale", id.toString(), motif, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "REJET_FICHE",
-                "Votre fiche " + response.getRaisonSociale() + " a été rejetée. Motif : " + motif,
-                id.toString(), "PersonneMorale");
+        ficheEvenementNotifier.rejet(jwt, request, response, response.getRaisonSociale(), motif);
         return ResponseEntity.ok(response);
     }
 

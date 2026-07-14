@@ -12,6 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import java.nio.charset.StandardCharsets;
 
 import java.util.List;
 import java.util.UUID;
@@ -73,4 +77,27 @@ public class PieceJointeController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+    
+    @GetMapping("/{id}/telecharger")
+public ResponseEntity<Resource> telecharger(@PathVariable UUID id) {
+    PieceJointeResponse metadata = service.getById(id);
+    Resource fichier = service.chargerFichierPhysique(id);
+
+    MediaType typeContenu;
+    try {
+        typeContenu = MediaType.parseMediaType(
+                metadata.getTypeFichier() != null ? metadata.getTypeFichier() : MediaType.APPLICATION_OCTET_STREAM_VALUE);
+    } catch (Exception e) {
+        typeContenu = MediaType.APPLICATION_OCTET_STREAM;
+    }
+
+    ContentDisposition disposition = ContentDisposition.inline()
+            .filename(metadata.getNomFichier(), StandardCharsets.UTF_8)
+            .build();
+
+    return ResponseEntity.ok()
+            .contentType(typeContenu)
+            .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+            .body(fichier);
+}
 }

@@ -46,6 +46,12 @@ public class TypeInfractionController {
     public ResponseEntity<List<TypeInfractionResponse>> getAll() {
         return ResponseEntity.ok(service.getAll());
     }
+    
+    @GetMapping("/actifs")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+public ResponseEntity<List<TypeInfractionResponse>> getAllActifs() {
+    return ResponseEntity.ok(service.getAllActifs());
+}
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")

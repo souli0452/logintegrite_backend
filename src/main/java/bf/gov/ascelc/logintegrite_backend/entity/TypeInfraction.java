@@ -4,6 +4,7 @@ import bf.gov.ascelc.logintegrite_backend.abstracts.AuditEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "type_infraction")
@@ -22,4 +23,11 @@ public class TypeInfraction extends AuditEntity {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+
+
+    @Builder.Default
+    @Column(nullable = false)
+    @ColumnDefault("true")
+    private Boolean actif = true;
 }

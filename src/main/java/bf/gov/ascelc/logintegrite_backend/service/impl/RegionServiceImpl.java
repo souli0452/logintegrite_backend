@@ -52,12 +52,20 @@ public class RegionServiceImpl implements RegionService {
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
     }
+    
+    @Override
+@Transactional(readOnly = true)
+public List<RegionResponse> getAllActifs() {
+    return repository.findByActifTrue().stream()
+            .map(mapper::toResponse)
+            .collect(Collectors.toList());
+}
 
     @Override
-    public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Région non trouvée avec l'id : " + id);
-        }
-        repository.deleteById(id);
-    }
+public void delete(UUID id) {
+    Region entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Région non trouvée avec l'id : " + id));
+    entity.setActif(false);
+    repository.save(entity);
+}
 }

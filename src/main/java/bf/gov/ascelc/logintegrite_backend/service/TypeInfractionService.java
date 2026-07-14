@@ -10,5 +10,6 @@ public interface TypeInfractionService {
     TypeInfractionResponse update(UUID id, TypeInfractionRequest request);
     TypeInfractionResponse getById(UUID id);
     List<TypeInfractionResponse> getAll();
+    List<TypeInfractionResponse> getAllActifs(); 
     void delete(UUID id);
 }

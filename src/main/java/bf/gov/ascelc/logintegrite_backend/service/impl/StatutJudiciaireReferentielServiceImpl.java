@@ -61,11 +61,12 @@ public class StatutJudiciaireReferentielServiceImpl implements StatutJudiciaireR
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Statut judiciaire non trouvé avec l'id : " + id);
-        }
-        repository.deleteById(id);
-    }
+
+@Override
+public void delete(UUID id) {
+    StatutJudiciaireReferentiel entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Statut judiciaire non trouvé avec l'id : " + id));
+    entity.setActif(false);
+    repository.save(entity);
+}
 }

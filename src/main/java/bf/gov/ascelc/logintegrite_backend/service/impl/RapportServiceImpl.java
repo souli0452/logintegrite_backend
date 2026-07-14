@@ -127,7 +127,7 @@ public class RapportServiceImpl implements RapportService {
     @Transactional(readOnly = true)
     public List<FicheExportResponse> getFichesActivesPourExport() {
 
-        return ficheRepo.findAll().stream()
+        return ficheRepo.findByStatutFiche("ACTIVE").stream() 
                 .filter(f -> "ACTIVE".equals(f.getStatutFiche()))
                 .map(fiche -> {
                     String cibleNom = "Inconnu";
@@ -135,12 +135,12 @@ public class RapportServiceImpl implements RapportService {
                     String type = "AUTRE";
 
                     if (fiche instanceof PersonnePhysique pp) {
-                        type = "PHYSIQUE";
+                        type = "Personne Physique"; 
                         String nomComplet = (pp.getNom() != null ? pp.getNom() : "") + " " + (pp.getPrenoms() != null ? pp.getPrenoms() : "");
                         cibleNom = nomComplet.trim().isEmpty() ? "Physique Anonyme" : nomComplet.trim();
                         identifiant = pp.getMatricule() != null ? pp.getMatricule() : "N/A";
                     } else if (fiche instanceof PersonneMorale pm) {
-                        type = "MORALE";
+                        type = "Personne Morale";
                         cibleNom = pm.getRaisonSociale() != null ? pm.getRaisonSociale() : "Morale Sans Nom";
                         identifiant = pm.getIfu() != null ? pm.getIfu() : "N/A";
                     }

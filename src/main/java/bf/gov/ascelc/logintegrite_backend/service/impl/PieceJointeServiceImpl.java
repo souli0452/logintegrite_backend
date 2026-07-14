@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import java.net.MalformedURLException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -166,4 +169,22 @@ public class PieceJointeServiceImpl implements PieceJointeService {
 
         repository.delete(entity);
     }
+    
+    @Override
+@Transactional(readOnly = true)
+public Resource chargerFichierPhysique(UUID id) {
+    PieceJointe entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Pièce jointe non trouvée avec l'id : " + id));
+    try {
+        Path chemin = Paths.get(entity.getUrlStockage());
+        Resource resource = new UrlResource(chemin.toUri());
+        if (!resource.exists() || !resource.isReadable()) {
+            throw new ResourceNotFoundException(
+                    "Le fichier physique de la pièce jointe " + id + " est introuvable sur le serveur.");
+        }
+        return resource;
+    } catch (MalformedURLException e) {
+        throw new ResourceNotFoundException("Chemin de stockage invalide pour la pièce jointe " + id);
+    }
+}
 }

@@ -53,11 +53,21 @@ public class TypeInfractionServiceImpl implements TypeInfractionService {
                 .collect(Collectors.toList());
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TypeInfractionResponse> getAllActifs() {
+        return repository.findByActifTrue().stream()
+                .map(mapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    
     @Override
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Type d'infraction non trouvé avec l'id : " + id);
-        }
-        repository.deleteById(id);
+        TypeInfraction entity = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Type d'infraction non trouvé avec l'id : " + id));
+        entity.setActif(false);
+        repository.save(entity);
     }
 }

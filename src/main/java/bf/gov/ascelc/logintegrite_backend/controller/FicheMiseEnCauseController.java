@@ -8,11 +8,11 @@ import bf.gov.ascelc.logintegrite_backend.dto.response.FicheMiseEnCauseResponse;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonneMorale;
 import bf.gov.ascelc.logintegrite_backend.entity.PersonnePhysique;
 import bf.gov.ascelc.logintegrite_backend.service.AuditService;
+import bf.gov.ascelc.logintegrite_backend.service.FicheEvenementNotifier;
 import bf.gov.ascelc.logintegrite_backend.service.FicheMiseEnCauseService;
 import bf.gov.ascelc.logintegrite_backend.service.PersonnePhysiqueService;
 import bf.gov.ascelc.logintegrite_backend.service.PersonneMoraleService;
 import bf.gov.ascelc.logintegrite_backend.mapper.FicheMiseEnCauseMapper;
-import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -32,9 +32,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
 @RequestMapping(ApiURLs.FICHES)
+@Validated
 public class FicheMiseEnCauseController {
 
     private final FicheMiseEnCauseService ficheService;
@@ -43,7 +47,7 @@ public class FicheMiseEnCauseController {
     private final PersonneMoraleService pmService;
     private final AuditService auditService;
     private final HttpServletRequest request;
-    private final NotificationService notificationService;
+    private final FicheEvenementNotifier ficheEvenementNotifier; 
 
 
     public FicheMiseEnCauseController(
@@ -53,14 +57,14 @@ public class FicheMiseEnCauseController {
             PersonnePhysiqueService ppService,
             PersonneMoraleService pmService,
             AuditService auditService,
-            NotificationService notificationService,
+            FicheEvenementNotifier ficheEvenementNotifier,
             HttpServletRequest request) {
         this.ficheService = ficheService;
         this.ficheMapper = ficheMapper;
         this.ppService = ppService;
         this.pmService = pmService;
         this.auditService = auditService;
-        this.notificationService = notificationService;
+        this.ficheEvenementNotifier = ficheEvenementNotifier;
         this.request = request;
 
     }
@@ -141,18 +145,13 @@ public class FicheMiseEnCauseController {
     }
 
     @PutMapping(ApiURLs.FICHES_SOUMETTRE)
-    @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
-    public ResponseEntity<FicheMiseEnCauseResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        String username = jwt != null ? jwt.getClaimAsString("preferred_username") : "SYSTEM";
-        FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.soumettre(id, agentId));
-        auditService.log(jwt, "SOUMISSION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierRole("VALIDATEUR", "SOUMISSION_FICHE",
-                "La fiche " + response.getCibleNom() + " a été soumise par " + username + " et attend votre validation.",
-                id.toString(), response.getTypeFiche());
-        return ResponseEntity.ok(response);
-
-    }
+@PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
+public ResponseEntity<FicheMiseEnCauseResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+    String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+    FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.soumettre(id, agentId));
+    ficheEvenementNotifier.soumission(jwt, request, response, response.getCibleNom());
+    return ResponseEntity.ok(response);
+}
 
     @GetMapping(ApiURLs.FICHES_A_VALIDER)
     @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR', 'ROLE_ADMINISTRATEUR')")
@@ -218,43 +217,39 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(combinees);
     }
 
-    // valider() mis à jour
     @PutMapping(ApiURLs.FICHES_VALIDER)
-    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
-    public ResponseEntity<FicheMiseEnCauseResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+@PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+public ResponseEntity<FicheMiseEnCauseResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+    String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
 
-        FicheMiseEnCause ficheExistante = ficheService.consulter(id);
-        FicheMiseEnCause ficheValidee;
-        if (ficheExistante instanceof PersonnePhysique) {
-            ficheValidee = ppService.valider(id, validateurId);
-        } else if (ficheExistante instanceof PersonneMorale) {
-            ficheValidee = pmService.valider(id, validateurId);
-        } else {
-            throw new IllegalStateException(
-                    "Type de fiche non pris en charge pour la validation : " + ficheExistante.getClass().getSimpleName());
-        }
-
-        FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheValidee);
-        auditService.log(jwt, "VALIDATION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "VALIDATION_FICHE",
-                "Votre fiche " + response.getCibleNom() + " a été validée.",
-                id.toString(), response.getTypeFiche());
-        return ResponseEntity.ok(response);
+    FicheMiseEnCause ficheExistante = ficheService.consulter(id);
+    FicheMiseEnCause ficheValidee;
+    if (ficheExistante instanceof PersonnePhysique) {
+        ficheValidee = ppService.valider(id, validateurId);
+    } else if (ficheExistante instanceof PersonneMorale) {
+        ficheValidee = pmService.valider(id, validateurId);
+    } else {
+        throw new IllegalStateException(
+                "Type de fiche non pris en charge pour la validation : " + ficheExistante.getClass().getSimpleName());
     }
+
+    FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheValidee);
+    ficheEvenementNotifier.validation(jwt, request, response, response.getCibleNom());
+    return ResponseEntity.ok(response);
+}
 
     @PutMapping(ApiURLs.FICHES_REJETER)
-    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
-    public ResponseEntity<FicheMiseEnCauseResponse> rejeter(
-            @PathVariable UUID id, @RequestParam String motif, @AuthenticationPrincipal Jwt jwt) {
-        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.rejeter(id, motif, validateurId));
-        auditService.log(jwt, "REJET_FICHE", response.getTypeFiche(), id.toString(), motif, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "REJET_FICHE",
-                "Votre fiche " + response.getCibleNom() + " a été rejetée. Motif : " + motif,
-                id.toString(), response.getTypeFiche());
-        return ResponseEntity.ok(response);
-    }
+@PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+public ResponseEntity<FicheMiseEnCauseResponse> rejeter(
+        @PathVariable UUID id,
+        @RequestParam @NotBlank(message = "Le motif du rejet est obligatoire.")
+        @Size(min = 20, message = "Le motif du rejet doit comporter au moins 20 caractères.") String motif,
+        @AuthenticationPrincipal Jwt jwt) {
+    String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+    FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.rejeter(id, motif, validateurId));
+    ficheEvenementNotifier.rejet(jwt, request, response, response.getCibleNom(), motif);
+    return ResponseEntity.ok(response);
+}
 
     @DeleteMapping(ApiURLs.FICHES_ARCHIVER)
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")

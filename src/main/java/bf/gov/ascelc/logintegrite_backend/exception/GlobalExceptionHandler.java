@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -78,4 +80,18 @@ public class GlobalExceptionHandler {
                         "reference", reference
                 ));
     }
+    
+    @ExceptionHandler(ConstraintViolationException.class)
+public ResponseEntity<Map<String, Object>> validationParametresEchouee(ConstraintViolationException ex) {
+    Map<String, String> erreursParChamp = new HashMap<>();
+    for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+        String chemin = violation.getPropertyPath().toString();
+        String cle = chemin.contains(".") ? chemin.substring(chemin.lastIndexOf('.') + 1) : chemin;
+        erreursParChamp.put(cle, violation.getMessage());
+    }
+    Map<String, Object> corps = new HashMap<>();
+    corps.put("erreur", "La validation des paramètres a échoué.");
+    corps.put("champs", erreursParChamp);
+    return ResponseEntity.badRequest().body(corps);
+}
 }

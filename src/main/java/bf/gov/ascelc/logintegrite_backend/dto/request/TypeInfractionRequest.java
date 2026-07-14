@@ -19,4 +19,6 @@ public class TypeInfractionRequest {
     private String libelle;
 
     private String description;
+
+    private Boolean actif; 
 }

@@ -52,12 +52,21 @@ public class EntiteOrganisationServiceImpl implements EntiteOrganisationService 
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
     }
-
+    
     @Override
-    public void delete(UUID id) { // Changé en UUID
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Organisation non trouvée avec l'id : " + id);
-        }
-        repository.deleteById(id);
-    }
+@Transactional(readOnly = true)
+public List<EntiteOrganisationResponse> getAllActifs() {
+    return repository.findByActifTrue().stream()
+            .map(mapper::toResponse)
+            .collect(Collectors.toList());
+}
+
+
+@Override
+public void delete(UUID id) {
+    EntiteOrganisation entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Organisation non trouvée avec l'id : " + id));
+    entity.setActif(false);
+    repository.save(entity);
+}
 }

@@ -23,8 +23,8 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
 
     long countByStatutFiche(String statutFiche);
 
-    // CORRIGÉ : CAST(:statut AS text) IS NULL — le paramètre statut, en String,
-    // était sujet au même bug de type indéterminé côté PostgreSQL que dateDebut/dateFin
+
+
     @EntityGraph(attributePaths = {"entite", "region"})
     @Query("SELECT f FROM FicheMiseEnCause f WHERE " +
             "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
@@ -36,19 +36,32 @@ public interface FicheMiseEnCauseRepository extends JpaRepository<FicheMiseEnCau
             @Param("statut") String statut,
             Pageable pageable);
 
-    @Query("SELECT f FROM FicheMiseEnCause f " +
-        "LEFT JOIN FETCH f.region " +
-        "LEFT JOIN FETCH f.entite " +
-        "WHERE f.statutFiche = 'ACTIVE' AND " +
-        "(:regionId IS NULL OR f.region.id = :regionId) AND " +
-        "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
-        "(CAST(:typeFiche AS text) IS NULL OR " +
-        "   (:typeFiche = 'PP' AND TYPE(f) = PersonnePhysique) OR " +
-        "   (:typeFiche = 'PM' AND TYPE(f) = PersonneMorale)) AND " +
-        "(CAST(:recherche AS text) IS NULL OR :recherche = '' OR " +
-        "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).nom, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
-        "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).prenoms, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
-        "   LOWER(COALESCE(TREAT(f AS PersonneMorale).raisonSociale, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')))")
+    @Query(
+        value = "SELECT f FROM FicheMiseEnCause f " +
+            "LEFT JOIN FETCH f.region " +
+            "LEFT JOIN FETCH f.entite " +
+            "WHERE f.statutFiche IN ('ACTIVE', 'ARCHIVE') AND " +
+            "(:regionId IS NULL OR f.region.id = :regionId) AND " +
+            "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
+            "(CAST(:typeFiche AS text) IS NULL OR " +
+            "   (:typeFiche = 'PP' AND TYPE(f) = PersonnePhysique) OR " +
+            "   (:typeFiche = 'PM' AND TYPE(f) = PersonneMorale)) AND " +
+            "(CAST(:recherche AS text) IS NULL OR :recherche = '' OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).nom, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).prenoms, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonneMorale).raisonSociale, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')))",
+        countQuery = "SELECT COUNT(f) FROM FicheMiseEnCause f " +
+            "WHERE f.statutFiche IN ('ACTIVE', 'ARCHIVE') AND " +
+            "(:regionId IS NULL OR f.region.id = :regionId) AND " +
+            "(:entiteId IS NULL OR f.entite.id = :entiteId) AND " +
+            "(CAST(:typeFiche AS text) IS NULL OR " +
+            "   (:typeFiche = 'PP' AND TYPE(f) = PersonnePhysique) OR " +
+            "   (:typeFiche = 'PM' AND TYPE(f) = PersonneMorale)) AND " +
+            "(CAST(:recherche AS text) IS NULL OR :recherche = '' OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).nom, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonnePhysique).prenoms, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')) OR " +
+            "   LOWER(COALESCE(TREAT(f AS PersonneMorale).raisonSociale, '')) LIKE LOWER(CONCAT('%', CAST(:recherche AS text), '%')))"
+    )
 Page<FicheMiseEnCause> rechercheRegistreOfficiel(
         @Param("regionId") UUID regionId,
         @Param("entiteId") UUID entiteId,
@@ -56,8 +69,8 @@ Page<FicheMiseEnCause> rechercheRegistreOfficiel(
         @Param("recherche") String recherche,
         Pageable pageable);
 
-    // CORRIGÉ : CAST(:dateDebut AS timestamp) / CAST(:dateFin AS timestamp)
-    // — c'est exactement la requête de ta stack trace (paramètre $7)
+
+
     @Query("SELECT COUNT(DISTINCT f) FROM FicheMiseEnCause f " +
             "LEFT JOIN f.infractions i LEFT JOIN i.typeInfraction ti WHERE " +
             "(:regionId IS NULL OR f.region.id = :regionId) AND " +
@@ -128,4 +141,9 @@ List<Object[]> countGroupByEntite(
             @Param("entiteId") UUID entiteId,
             @Param("dateDebut") LocalDateTime dateDebut,
             @Param("dateFin") LocalDateTime dateFin);
+            
+            @EntityGraph(attributePaths = {"entite", "region"})
+List<FicheMiseEnCause> findByStatutFiche(String statutFiche);
 }
+
+

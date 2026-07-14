@@ -10,5 +10,6 @@ public interface RegionService {
     RegionResponse update(UUID id, RegionRequest request);
     RegionResponse getById(UUID id);
     List<RegionResponse> getAll();
+    List<RegionResponse> getAllActifs();
     void delete(UUID id);
 }
