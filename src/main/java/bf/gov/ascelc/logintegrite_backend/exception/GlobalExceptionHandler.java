@@ -10,6 +10,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -69,6 +70,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("erreur", "Accès refusé : vous n'êtes pas autorisé à accéder à cette ressource."));
     }
+    
+    @ExceptionHandler(DataIntegrityViolationException.class)
+public ResponseEntity<Map<String, String>> violationIntegrite(DataIntegrityViolationException ex) {
+    log.warn("Violation de contrainte d'intégrité : {}", ex.getMostSpecificCause().getMessage());
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(Map.of("erreur", "Cette opération entre en conflit avec une donnée existante (identifiant déjà utilisé par une fiche active)."));
+}
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> generic(Exception ex) {

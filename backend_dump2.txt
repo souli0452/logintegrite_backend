@@ -491,40 +491,51 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/entite-organisations") // Standardisation sur la v1 de Log Intégrité
+@RequestMapping("/api/v1/entite-organisations")
 @RequiredArgsConstructor
-// Protection globale pour les agents, validateurs et administrateurs du système
-@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
 public class EntiteOrganisationController {
 
     private final EntiteOrganisationService service;
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')") 
     public ResponseEntity<EntiteOrganisationResponse> create(@Valid @RequestBody EntiteOrganisationRequest request) {
         return new ResponseEntity<>(service.create(request), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')") 
     public ResponseEntity<EntiteOrganisationResponse> update(@PathVariable UUID id, @Valid @RequestBody EntiteOrganisationRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')") 
     public ResponseEntity<EntiteOrganisationResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')") 
     public ResponseEntity<List<EntiteOrganisationResponse>> getAll() {
         return ResponseEntity.ok(service.getAll());
     }
 
+    // AJOUT : endpoint utilisé par les listes déroulantes de saisie
+    @GetMapping("/actifs")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+    public ResponseEntity<List<EntiteOrganisationResponse>> getAllActifs() {
+        return ResponseEntity.ok(service.getAllActifs());
+    }
+
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')") 
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/FicheMiseEnCauseController.java =====
 package bf.gov.ascelc.logintegrite_backend.controller;
@@ -542,7 +553,6 @@ import bf.gov.ascelc.logintegrite_backend.service.FicheMiseEnCauseService;
 import bf.gov.ascelc.logintegrite_backend.service.PersonnePhysiqueService;
 import bf.gov.ascelc.logintegrite_backend.service.PersonneMoraleService;
 import bf.gov.ascelc.logintegrite_backend.mapper.FicheMiseEnCauseMapper;
-import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -562,9 +572,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
 @RequestMapping(ApiURLs.FICHES)
+@Validated
 public class FicheMiseEnCauseController {
 
     private final FicheMiseEnCauseService ficheService;
@@ -573,7 +587,6 @@ public class FicheMiseEnCauseController {
     private final PersonneMoraleService pmService;
     private final AuditService auditService;
     private final HttpServletRequest request;
-    private final NotificationService notificationService;
     private final FicheEvenementNotifier ficheEvenementNotifier; 
 
 
@@ -584,7 +597,6 @@ public class FicheMiseEnCauseController {
             PersonnePhysiqueService ppService,
             PersonneMoraleService pmService,
             AuditService auditService,
-            NotificationService notificationService,
             FicheEvenementNotifier ficheEvenementNotifier,
             HttpServletRequest request) {
         this.ficheService = ficheService;
@@ -592,7 +604,6 @@ public class FicheMiseEnCauseController {
         this.ppService = ppService;
         this.pmService = pmService;
         this.auditService = auditService;
-        this.notificationService = notificationService;
         this.ficheEvenementNotifier = ficheEvenementNotifier;
         this.request = request;
 
@@ -674,18 +685,13 @@ public class FicheMiseEnCauseController {
     }
 
     @PutMapping(ApiURLs.FICHES_SOUMETTRE)
-    @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
-    public ResponseEntity<FicheMiseEnCauseResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        String username = jwt != null ? jwt.getClaimAsString("preferred_username") : "SYSTEM";
-        FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.soumettre(id, agentId));
-        auditService.log(jwt, "SOUMISSION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierRole("VALIDATEUR", "SOUMISSION_FICHE",
-                "La fiche " + response.getCibleNom() + " a été soumise par " + username + " et attend votre validation.",
-                id.toString(), response.getTypeFiche());
-        return ResponseEntity.ok(response);
-
-    }
+@PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
+public ResponseEntity<FicheMiseEnCauseResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+    String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+    FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.soumettre(id, agentId));
+    ficheEvenementNotifier.soumission(jwt, request, response, response.getCibleNom());
+    return ResponseEntity.ok(response);
+}
 
     @GetMapping(ApiURLs.FICHES_A_VALIDER)
     @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR', 'ROLE_ADMINISTRATEUR')")
@@ -751,43 +757,39 @@ public class FicheMiseEnCauseController {
         return ResponseEntity.ok(combinees);
     }
 
-    // valider() mis à jour
     @PutMapping(ApiURLs.FICHES_VALIDER)
-    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
-    public ResponseEntity<FicheMiseEnCauseResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+@PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+public ResponseEntity<FicheMiseEnCauseResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+    String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
 
-        FicheMiseEnCause ficheExistante = ficheService.consulter(id);
-        FicheMiseEnCause ficheValidee;
-        if (ficheExistante instanceof PersonnePhysique) {
-            ficheValidee = ppService.valider(id, validateurId);
-        } else if (ficheExistante instanceof PersonneMorale) {
-            ficheValidee = pmService.valider(id, validateurId);
-        } else {
-            throw new IllegalStateException(
-                    "Type de fiche non pris en charge pour la validation : " + ficheExistante.getClass().getSimpleName());
-        }
-
-        FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheValidee);
-        auditService.log(jwt, "VALIDATION_FICHE", response.getTypeFiche(), id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "VALIDATION_FICHE",
-                "Votre fiche " + response.getCibleNom() + " a été validée.",
-                id.toString(), response.getTypeFiche());
-        return ResponseEntity.ok(response);
+    FicheMiseEnCause ficheExistante = ficheService.consulter(id);
+    FicheMiseEnCause ficheValidee;
+    if (ficheExistante instanceof PersonnePhysique) {
+        ficheValidee = ppService.valider(id, validateurId);
+    } else if (ficheExistante instanceof PersonneMorale) {
+        ficheValidee = pmService.valider(id, validateurId);
+    } else {
+        throw new IllegalStateException(
+                "Type de fiche non pris en charge pour la validation : " + ficheExistante.getClass().getSimpleName());
     }
+
+    FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheValidee);
+    ficheEvenementNotifier.validation(jwt, request, response, response.getCibleNom());
+    return ResponseEntity.ok(response);
+}
 
     @PutMapping(ApiURLs.FICHES_REJETER)
-    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
-    public ResponseEntity<FicheMiseEnCauseResponse> rejeter(
-            @PathVariable UUID id, @RequestParam String motif, @AuthenticationPrincipal Jwt jwt) {
-        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.rejeter(id, motif, validateurId));
-        auditService.log(jwt, "REJET_FICHE", response.getTypeFiche(), id.toString(), motif, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "REJET_FICHE",
-                "Votre fiche " + response.getCibleNom() + " a été rejetée. Motif : " + motif,
-                id.toString(), response.getTypeFiche());
-        return ResponseEntity.ok(response);
-    }
+@PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+public ResponseEntity<FicheMiseEnCauseResponse> rejeter(
+        @PathVariable UUID id,
+        @RequestParam @NotBlank(message = "Le motif du rejet est obligatoire.")
+        @Size(min = 20, message = "Le motif du rejet doit comporter au moins 20 caractères.") String motif,
+        @AuthenticationPrincipal Jwt jwt) {
+    String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+    FicheMiseEnCauseResponse response = ficheMapper.toResponse(ficheService.rejeter(id, motif, validateurId));
+    ficheEvenementNotifier.rejet(jwt, request, response, response.getCibleNom(), motif);
+    return ResponseEntity.ok(response);
+}
 
     @DeleteMapping(ApiURLs.FICHES_ARCHIVER)
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
@@ -1020,10 +1022,11 @@ import bf.gov.ascelc.logintegrite_backend.dto.response.VerificationExistenceResp
 import bf.gov.ascelc.logintegrite_backend.service.AuditService;
 import bf.gov.ascelc.logintegrite_backend.service.FicheEvenementNotifier;
 import bf.gov.ascelc.logintegrite_backend.service.PersonneMoraleService;
-import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -1032,6 +1035,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -1039,14 +1043,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping(ApiURLs.PERSONNES_MORALES)
 @RequiredArgsConstructor
+@Validated
 public class PersonneMoraleController {
 
     private final PersonneMoraleService pmService;
     private final AuditService auditService;
     private final HttpServletRequest request;
-    private final NotificationService notificationService;
-    private final FicheEvenementNotifier ficheEvenementNotifier; 
-
+    private final FicheEvenementNotifier ficheEvenementNotifier;
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
@@ -1074,8 +1077,6 @@ public class PersonneMoraleController {
         return ResponseEntity.ok(pmService.rechercherMesFiches(userId, statut, pageable));
     }
 
-    // MODIFIÉ : même cloisonnement que PersonnePhysiqueController.rechercher()
-    // — voir le commentaire détaillé là-bas.
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
     public ResponseEntity<Page<?>> rechercher(
@@ -1129,12 +1130,8 @@ public class PersonneMoraleController {
     @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
     public ResponseEntity<PersonneMoraleResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        String username = jwt != null ? jwt.getClaimAsString("preferred_username") : "SYSTEM";
         PersonneMoraleResponse response = pmService.soumettreFiche(id, agentId);
-        auditService.log(jwt, "SOUMISSION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierRole("VALIDATEUR", "SOUMISSION_FICHE",
-                "La fiche " + response.getRaisonSociale() + " a été soumise par " + username + " et attend votre validation.",
-                id.toString(), "PersonneMorale");
+        ficheEvenementNotifier.soumission(jwt, request, response, response.getRaisonSociale());
         return ResponseEntity.ok(response);
     }
 
@@ -1143,23 +1140,20 @@ public class PersonneMoraleController {
     public ResponseEntity<PersonneMoraleResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
         PersonneMoraleResponse response = pmService.validerFiche(id, validateurId);
-        auditService.log(jwt, "VALIDATION_FICHE", "PersonneMorale", id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "VALIDATION_FICHE",
-                "Votre fiche " + response.getRaisonSociale() + " a été validée.",
-                id.toString(), "PersonneMorale");
+        ficheEvenementNotifier.validation(jwt, request, response, response.getRaisonSociale());
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/rejeter")
     @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
     public ResponseEntity<PersonneMoraleResponse> rejeter(
-            @PathVariable UUID id, @RequestParam String motif, @AuthenticationPrincipal Jwt jwt) {
+            @PathVariable UUID id,
+            @RequestParam @NotBlank(message = "Le motif du rejet est obligatoire.")
+            @Size(min = 20, message = "Le motif du rejet doit comporter au moins 20 caractères.") String motif,
+            @AuthenticationPrincipal Jwt jwt) {
         String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
         PersonneMoraleResponse response = pmService.rejeterFiche(id, motif, validateurId);
-        auditService.log(jwt, "REJET_FICHE", "PersonneMorale", id.toString(), motif, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "REJET_FICHE",
-                "Votre fiche " + response.getRaisonSociale() + " a été rejetée. Motif : " + motif,
-                id.toString(), "PersonneMorale");
+        ficheEvenementNotifier.rejet(jwt, request, response, response.getRaisonSociale(), motif);
         return ResponseEntity.ok(response);
     }
 
@@ -1195,7 +1189,6 @@ import bf.gov.ascelc.logintegrite_backend.dto.response.VerificationExistenceResp
 import bf.gov.ascelc.logintegrite_backend.service.AuditService;
 import bf.gov.ascelc.logintegrite_backend.service.FicheEvenementNotifier;
 import bf.gov.ascelc.logintegrite_backend.service.PersonnePhysiqueService;
-import bf.gov.ascelc.logintegrite_backend.service.NotificationService;
 import bf.gov.ascelc.logintegrite_backend.utils.constants.ApiURLs;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -1212,16 +1205,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.UUID;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
 @RequestMapping(ApiURLs.PERSONNES_PHYSIQUES)
 @RequiredArgsConstructor
+@Validated
 public class PersonnePhysiqueController {
 
     private final PersonnePhysiqueService ppService;
     private final AuditService auditService;
     private final HttpServletRequest request;
-    private final NotificationService notificationService;
     private final FicheEvenementNotifier ficheEvenementNotifier;
 
 
@@ -1253,17 +1249,7 @@ public class PersonnePhysiqueController {
         return ResponseEntity.ok(ppService.rechercherMesFiches(userId, statut, pageable));
     }
 
-    // MODIFIÉ : cloisonnement des fiches non actives. Avant, un agent ou un
-    // validateur pouvait appeler cet endpoint avec n'importe quel statut
-    // (ex. ?statut=BROUILLON) et voir les fiches de TOUS les créateurs — la
-    // consigne métier ("une fiche créée par un agent est personnelle") n'était
-    // donc pas réellement appliquée, seulement contournable via /mes-fiches.
-    // Règle désormais appliquée :
-    //   - rôle public          -> ACTIVE uniquement (inchangé)
-    //   - administrateur       -> aucune restriction (supervision globale)
-    //   - validateur seul + statut=EN_ATTENTE_VALIDATION -> file de validation complète
-    //   - statut=ACTIVE (registre officiel) -> jamais restreint, visible par tout rôle interne
-    //   - tout le reste (agent, ou validateur hors file d'attente) -> uniquement ses propres fiches
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR', 'ROLE_public')")
     public ResponseEntity<Page<?>> rechercher(
@@ -1313,42 +1299,35 @@ public class PersonnePhysiqueController {
     }
 
     @PutMapping("/{id}/soumettre")
-    @PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
-    public ResponseEntity<PersonnePhysiqueResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        String username = jwt != null ? jwt.getClaimAsString("preferred_username") : "SYSTEM";
-        PersonnePhysiqueResponse response = ppService.soumettreFiche(id, agentId);
-        auditService.log(jwt, "SOUMISSION_FICHE", "PersonnePhysique", id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierRole("VALIDATEUR", "SOUMISSION_FICHE",
-                "La fiche " + response.getNom() + " " + response.getPrenoms() + " a été soumise par " + username + " et attend votre validation.",
-                id.toString(), "PersonnePhysique");
-        return ResponseEntity.ok(response);
-    }
+@PreAuthorize("hasAnyAuthority('ROLE_AGENT', 'ROLE_ADMINISTRATEUR')")
+public ResponseEntity<PersonnePhysiqueResponse> soumettre(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+    String agentId = jwt != null ? jwt.getSubject() : "SYSTEM";
+    PersonnePhysiqueResponse response = ppService.soumettreFiche(id, agentId);
+    ficheEvenementNotifier.soumission(jwt, request, response, response.getNom() + " " + response.getPrenoms());
+    return ResponseEntity.ok(response);
+}
 
     @PutMapping("/{id}/valider")
-    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
-    public ResponseEntity<PersonnePhysiqueResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        PersonnePhysiqueResponse response = ppService.validerFiche(id, validateurId);
-        auditService.log(jwt, "VALIDATION_FICHE", "PersonnePhysique", id.toString(), null, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "VALIDATION_FICHE",
-                "Votre fiche " + response.getNom() + " " + response.getPrenoms() + " a été validée.",
-                id.toString(), "PersonnePhysique");
-        return ResponseEntity.ok(response);
-    }
+@PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+public ResponseEntity<PersonnePhysiqueResponse> valider(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+    String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+    PersonnePhysiqueResponse response = ppService.validerFiche(id, validateurId);
+    ficheEvenementNotifier.validation(jwt, request, response, response.getNom() + " " + response.getPrenoms());
+    return ResponseEntity.ok(response);
+}
 
     @PutMapping("/{id}/rejeter")
-    @PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
-    public ResponseEntity<PersonnePhysiqueResponse> rejeter(
-            @PathVariable UUID id, @RequestParam String motif, @AuthenticationPrincipal Jwt jwt) {
-        String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
-        PersonnePhysiqueResponse response = ppService.rejeterFiche(id, motif, validateurId);
-        auditService.log(jwt, "REJET_FICHE", "PersonnePhysique", id.toString(), motif, request.getRemoteAddr());
-        notificationService.notifierUtilisateur(response.getCreatedById(), "REJET_FICHE",
-                "Votre fiche " + response.getNom() + " " + response.getPrenoms() + " a été rejetée. Motif : " + motif,
-                id.toString(), "PersonnePhysique");
-        return ResponseEntity.ok(response);
-    }
+@PreAuthorize("hasAnyAuthority('ROLE_VALIDATEUR')")
+public ResponseEntity<PersonnePhysiqueResponse> rejeter(
+        @PathVariable UUID id,
+        @RequestParam @NotBlank(message = "Le motif du rejet est obligatoire.")
+        @Size(min = 20, message = "Le motif du rejet doit comporter au moins 20 caractères.") String motif,
+        @AuthenticationPrincipal Jwt jwt) {
+    String validateurId = jwt != null ? jwt.getSubject() : "SYSTEM";
+    PersonnePhysiqueResponse response = ppService.rejeterFiche(id, motif, validateurId);
+    ficheEvenementNotifier.rejet(jwt, request, response, response.getNom() + " " + response.getPrenoms(), motif);
+    return ResponseEntity.ok(response);
+}
 
     @PutMapping("/{id}/statut-judiciaire")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT')")
@@ -1386,6 +1365,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import java.nio.charset.StandardCharsets;
 
 import java.util.List;
 import java.util.UUID;
@@ -1447,7 +1430,31 @@ public class PieceJointeController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+    
+    @GetMapping("/{id}/telecharger")
+public ResponseEntity<Resource> telecharger(@PathVariable UUID id) {
+    PieceJointeResponse metadata = service.getById(id);
+    Resource fichier = service.chargerFichierPhysique(id);
+
+    MediaType typeContenu;
+    try {
+        typeContenu = MediaType.parseMediaType(
+                metadata.getTypeFichier() != null ? metadata.getTypeFichier() : MediaType.APPLICATION_OCTET_STREAM_VALUE);
+    } catch (Exception e) {
+        typeContenu = MediaType.APPLICATION_OCTET_STREAM;
+    }
+
+    ContentDisposition disposition = ContentDisposition.inline()
+            .filename(metadata.getNomFichier(), StandardCharsets.UTF_8)
+            .build();
+
+    return ResponseEntity.ok()
+            .contentType(typeContenu)
+            .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+            .body(fichier);
 }
+}
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/controller/RapportController.java =====
 package bf.gov.ascelc.logintegrite_backend.controller;
@@ -1649,6 +1656,13 @@ public class RegionController {
     public ResponseEntity<List<RegionResponse>> getAll() {
         return ResponseEntity.ok(service.getAll());
     }
+    
+    // AJOUT : endpoint utilisé par les listes déroulantes de saisie 
+@GetMapping("/actifs")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+public ResponseEntity<List<RegionResponse>> getAllActifs() {
+    return ResponseEntity.ok(service.getAllActifs());
+}
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
@@ -1853,6 +1867,12 @@ public class TypeInfractionController {
     public ResponseEntity<List<TypeInfractionResponse>> getAll() {
         return ResponseEntity.ok(service.getAll());
     }
+    
+    @GetMapping("/actifs")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+public ResponseEntity<List<TypeInfractionResponse>> getAllActifs() {
+    return ResponseEntity.ok(service.getAllActifs());
+}
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
@@ -2025,6 +2045,7 @@ public class InfractionRequest {
 
     private String sources;
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/dto/request/NotificationRequest.java =====
 package bf.gov.ascelc.logintegrite_backend.dto.request;
@@ -2358,7 +2379,10 @@ public class TypeInfractionRequest {
     private String libelle;
 
     private String description;
+
+    private Boolean actif; 
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/dto/response/EntiteOrganisationResponse.java =====
 package bf.gov.ascelc.logintegrite_backend.dto.response;
@@ -2887,7 +2911,9 @@ public class TypeInfractionResponse extends AuditEntityDto {
     private String code;
     private String libelle;
     private String description;
+    private Boolean actif;
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/dto/response/VerificationExistenceResponse.java =====
 package bf.gov.ascelc.logintegrite_backend.dto.response;
@@ -3412,6 +3438,7 @@ import bf.gov.ascelc.logintegrite_backend.abstracts.AuditEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "type_infraction")
@@ -3430,7 +3457,15 @@ public class TypeInfraction extends AuditEntity {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+
+
+    @Builder.Default
+    @Column(nullable = false)
+    @ColumnDefault("true")
+    private Boolean actif = true;
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/exception/FicheDejaExistanteException.java =====
 package bf.gov.ascelc.logintegrite_backend.exception;
@@ -3463,10 +3498,13 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -3520,6 +3558,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("erreur", "Accès refusé : vous n'êtes pas autorisé à accéder à cette ressource."));
     }
+    
+    @ExceptionHandler(DataIntegrityViolationException.class)
+public ResponseEntity<Map<String, String>> violationIntegrite(DataIntegrityViolationException ex) {
+    log.warn("Violation de contrainte d'intégrité : {}", ex.getMostSpecificCause().getMessage());
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(Map.of("erreur", "Cette opération entre en conflit avec une donnée existante (identifiant déjà utilisé par une fiche active)."));
+}
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> generic(Exception ex) {
@@ -3531,7 +3576,22 @@ public class GlobalExceptionHandler {
                         "reference", reference
                 ));
     }
+    
+    @ExceptionHandler(ConstraintViolationException.class)
+public ResponseEntity<Map<String, Object>> validationParametresEchouee(ConstraintViolationException ex) {
+    Map<String, String> erreursParChamp = new HashMap<>();
+    for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+        String chemin = violation.getPropertyPath().toString();
+        String cle = chemin.contains(".") ? chemin.substring(chemin.lastIndexOf('.') + 1) : chemin;
+        erreursParChamp.put(cle, violation.getMessage());
+    }
+    Map<String, Object> corps = new HashMap<>();
+    corps.put("erreur", "La validation des paramètres a échoué.");
+    corps.put("champs", erreursParChamp);
+    return ResponseEntity.badRequest().body(corps);
 }
+}
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/exception/ResourceNotFoundException.java =====
 package bf.gov.ascelc.logintegrite_backend.exception;
@@ -4568,11 +4628,14 @@ package bf.gov.ascelc.logintegrite_backend.repository;
 import bf.gov.ascelc.logintegrite_backend.entity.TypeInfraction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface TypeInfractionRepository
-        extends JpaRepository<TypeInfraction, UUID> {} // Changé de Long à UUID
+public interface TypeInfractionRepository extends JpaRepository<TypeInfraction, UUID> {
+    List<TypeInfraction> findByActifTrue();
+}
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/service/AuditService.java =====
 package bf.gov.ascelc.logintegrite_backend.service;
@@ -4589,15 +4652,17 @@ package bf.gov.ascelc.logintegrite_backend.service;
 import bf.gov.ascelc.logintegrite_backend.dto.request.EntiteOrganisationRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.EntiteOrganisationResponse;
 import java.util.List;
-import java.util.UUID; // Ajout de l'import
+import java.util.UUID; 
 
 public interface EntiteOrganisationService {
     EntiteOrganisationResponse create(EntiteOrganisationRequest request);
-    EntiteOrganisationResponse update(UUID id, EntiteOrganisationRequest request); // Changé en UUID
-    EntiteOrganisationResponse getById(UUID id); // Changé en UUID
+    EntiteOrganisationResponse update(UUID id, EntiteOrganisationRequest request); 
+    EntiteOrganisationResponse getById(UUID id);
     List<EntiteOrganisationResponse> getAll();
-    void delete(UUID id); // Changé en UUID
+    List<EntiteOrganisationResponse> getAllActifs();
+    void delete(UUID id); 
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/service/FicheEvenementNotifier.java =====
 package bf.gov.ascelc.logintegrite_backend.service;
@@ -4793,15 +4858,25 @@ public class EntiteOrganisationServiceImpl implements EntiteOrganisationService 
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
     }
-
+    
     @Override
-    public void delete(UUID id) { // Changé en UUID
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Organisation non trouvée avec l'id : " + id);
-        }
-        repository.deleteById(id);
-    }
+@Transactional(readOnly = true)
+public List<EntiteOrganisationResponse> getAllActifs() {
+    return repository.findByActifTrue().stream()
+            .map(mapper::toResponse)
+            .collect(Collectors.toList());
 }
+
+
+@Override
+public void delete(UUID id) {
+    EntiteOrganisation entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Organisation non trouvée avec l'id : " + id));
+    entity.setActif(false);
+    repository.save(entity);
+}
+}
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/service/impl/FicheMiseEnCauseServiceImpl.java =====
 package bf.gov.ascelc.logintegrite_backend.service.impl;
@@ -6063,6 +6138,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import java.net.MalformedURLException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -6213,7 +6291,26 @@ public class PieceJointeServiceImpl implements PieceJointeService {
 
         repository.delete(entity);
     }
+    
+    @Override
+@Transactional(readOnly = true)
+public Resource chargerFichierPhysique(UUID id) {
+    PieceJointe entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Pièce jointe non trouvée avec l'id : " + id));
+    try {
+        Path chemin = Paths.get(entity.getUrlStockage());
+        Resource resource = new UrlResource(chemin.toUri());
+        if (!resource.exists() || !resource.isReadable()) {
+            throw new ResourceNotFoundException(
+                    "Le fichier physique de la pièce jointe " + id + " est introuvable sur le serveur.");
+        }
+        return resource;
+    } catch (MalformedURLException e) {
+        throw new ResourceNotFoundException("Chemin de stockage invalide pour la pièce jointe " + id);
+    }
 }
+}
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/service/impl/RapportServiceImpl.java =====
 package bf.gov.ascelc.logintegrite_backend.service.impl;
@@ -6522,15 +6619,24 @@ public class RegionServiceImpl implements RegionService {
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
     }
+    
+    @Override
+@Transactional(readOnly = true)
+public List<RegionResponse> getAllActifs() {
+    return repository.findByActifTrue().stream()
+            .map(mapper::toResponse)
+            .collect(Collectors.toList());
+}
 
     @Override
-    public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Région non trouvée avec l'id : " + id);
-        }
-        repository.deleteById(id);
-    }
+public void delete(UUID id) {
+    Region entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Région non trouvée avec l'id : " + id));
+    entity.setActif(false);
+    repository.save(entity);
 }
+}
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/service/impl/SauvegardeServiceImpl.java =====
 package bf.gov.ascelc.logintegrite_backend.service.impl;
@@ -6815,14 +6921,16 @@ public class StatutJudiciaireReferentielServiceImpl implements StatutJudiciaireR
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Statut judiciaire non trouvé avec l'id : " + id);
-        }
-        repository.deleteById(id);
-    }
+
+@Override
+public void delete(UUID id) {
+    StatutJudiciaireReferentiel entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Statut judiciaire non trouvé avec l'id : " + id));
+    entity.setActif(false);
+    repository.save(entity);
 }
+}
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/service/impl/TypeInfractionServiceImpl.java =====
 package bf.gov.ascelc.logintegrite_backend.service.impl;
@@ -6880,14 +6988,25 @@ public class TypeInfractionServiceImpl implements TypeInfractionService {
                 .collect(Collectors.toList());
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TypeInfractionResponse> getAllActifs() {
+        return repository.findByActifTrue().stream()
+                .map(mapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    
     @Override
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Type d'infraction non trouvé avec l'id : " + id);
-        }
-        repository.deleteById(id);
+        TypeInfraction entity = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Type d'infraction non trouvé avec l'id : " + id));
+        entity.setActif(false);
+        repository.save(entity);
     }
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/service/InfractionService.java =====
 package bf.gov.ascelc.logintegrite_backend.service;
@@ -7056,6 +7175,7 @@ package bf.gov.ascelc.logintegrite_backend.service;
 import bf.gov.ascelc.logintegrite_backend.dto.request.PieceJointeRequest;
 import bf.gov.ascelc.logintegrite_backend.dto.response.PieceJointeResponse;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
 import java.util.List;
 import java.util.UUID;
 
@@ -7072,9 +7192,12 @@ public interface PieceJointeService {
 
     // AJOUT
     List<PieceJointeResponse> getByInfractionId(UUID infractionId);
+    // AJOUT : charge le fichier physique pour le servir en réponse HTTP
+    Resource chargerFichierPhysique(UUID id);
 
     void delete(UUID id);
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/service/RapportService.java =====
 package bf.gov.ascelc.logintegrite_backend.service;
@@ -7127,8 +7250,10 @@ public interface RegionService {
     RegionResponse update(UUID id, RegionRequest request);
     RegionResponse getById(UUID id);
     List<RegionResponse> getAll();
+    List<RegionResponse> getAllActifs();
     void delete(UUID id);
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/service/SauvegardeService.java =====
 package bf.gov.ascelc.logintegrite_backend.service;
@@ -7187,8 +7312,10 @@ public interface TypeInfractionService {
     TypeInfractionResponse update(UUID id, TypeInfractionRequest request);
     TypeInfractionResponse getById(UUID id);
     List<TypeInfractionResponse> getAll();
+    List<TypeInfractionResponse> getAllActifs(); 
     void delete(UUID id);
 }
+
 
 ===== src/main/java/bf/gov/ascelc/logintegrite_backend/utils/constants/ApiURLs.java =====
 package bf.gov.ascelc.logintegrite_backend.utils.constants;

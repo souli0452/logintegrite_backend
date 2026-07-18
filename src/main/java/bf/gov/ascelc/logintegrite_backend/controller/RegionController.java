@@ -47,6 +47,13 @@ public class RegionController {
     public ResponseEntity<List<RegionResponse>> getAll() {
         return ResponseEntity.ok(service.getAll());
     }
+    
+    // AJOUT : endpoint utilisé par les listes déroulantes de saisie 
+@GetMapping("/actifs")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR', 'ROLE_AGENT', 'ROLE_VALIDATEUR')")
+public ResponseEntity<List<RegionResponse>> getAllActifs() {
+    return ResponseEntity.ok(service.getAllActifs());
+}
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRATEUR')")
