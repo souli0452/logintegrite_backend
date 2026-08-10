@@ -1,0 +1,890 @@
+gid@gid-Latitude-E5450:~/Documents/MON_STAGE/Les livrables/LOG/logintegrite_frontend$ ng serve
+Application bundle generation failed. [18.766 seconds] - 2026-07-31T13:35:39.128Z
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.html:37:16:
+      37 │       [valeur]="d.totalPersonnesImpliquees ?? 0"
+         ╵                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component DashboardVue.
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.ts:30:15:
+      30 │   templateUrl: './dashboard-vue.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.html:41:16:
+      41 │       [valeur]="d.totalDossiers ?? 0"
+         ╵                 ~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component DashboardVue.
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.ts:30:15:
+      30 │   templateUrl: './dashboard-vue.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.html:45:16:
+      45 │       [valeur]="d.totalDossiersValides ?? 0"
+         ╵                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component DashboardVue.
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.ts:30:15:
+      30 │   templateUrl: './dashboard-vue.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.html:49:16:
+      49 │       [valeur]="d.totalDossiersEnAttente ?? 0"
+         ╵                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component DashboardVue.
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.ts:30:15:
+      30 │   templateUrl: './dashboard-vue.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.html:217:45:
+      217 │ ...ue__valeur">{{ d.delaiMoyenValidationJours ?? 0 }} <span class...
+          ╵                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component DashboardVue.
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.ts:30:15:
+      30 │   templateUrl: './dashboard-vue.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.html:221:45:
+      221 │ ...rique__valeur">{{ d.tauxCompletudeGlobal ?? 0 }}<span class="c...
+          ╵                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component DashboardVue.
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.ts:30:15:
+      30 │   templateUrl: './dashboard-vue.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.html:225:45:
+      225 │ ...que__valeur">{{ d.totalPersonnesImpliquees ?? 0 | number:'1.0-...
+          ╵                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component DashboardVue.
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.ts:30:15:
+      30 │   templateUrl: './dashboard-vue.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.html:229:45:
+      229 │ ...rique__valeur">{{ d.totalDossiersRejetes ?? 0 | number:'1.0-0'...
+          ╵                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component DashboardVue.
+
+    src/app/features/dashboard/pages/dashboard-vue/dashboard-vue.ts:30:15:
+      30 │   templateUrl: './dashboard-vue.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8113: RouterLink is not used within the template of NouveauDossier [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:50:4:
+      50 │     RouterLink, ReactiveFormsModule, DatePipe,
+         ╵     ~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.html:8:19:
+      8 │           <span>{{ p.nomNaissance ?? '��' }}</span>
+        ╵                    ~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletInfos.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.ts:7:15:
+      7 │   templateUrl: './onglet-infos.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.html:16:19:
+      16 │           <span>{{ p.prenoms ?? '��' }}</span>
+         ╵                    ~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletInfos.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.ts:7:15:
+      7 │   templateUrl: './onglet-infos.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.html:32:19:
+      32 │           <span>{{ p.nationalite ?? '��' }}</span>
+         ╵                    ~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletInfos.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.ts:7:15:
+      7 │   templateUrl: './onglet-infos.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.html:62:19:
+      62 │           <span>{{ m.denominationSociale ?? '��' }}</span>
+         ╵                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletInfos.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.ts:7:15:
+      7 │   templateUrl: './onglet-infos.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.html:70:19:
+      70 │           <span>{{ m.formeJuridique ?? '��' }}</span>
+         ╵                    ~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletInfos.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.ts:7:15:
+      7 │   templateUrl: './onglet-infos.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.html:90:19:
+      90 │           <span>{{ m.secteurActivite ?? '��' }}</span>
+         ╵                    ~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletInfos.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.ts:7:15:
+      7 │   templateUrl: './onglet-infos.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.html:94:19:
+      94 │           <span>{{ m.siegeSocial ?? '��' }}</span>
+         ╵                    ~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletInfos.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-infos/onglet-infos.ts:7:15:
+      7 │   templateUrl: './onglet-infos.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-vue-ensemble/onglet-vue-ensemble.html:33:42:
+      33 │ ...     <div class="champ__valeur">{{ p.nationalite ?? '��' }}</div>
+         ╵                                       ~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletVueEnsemble.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-vue-ensemble/onglet-vue-ensemble.ts:9:15:
+      9 │   templateUrl: './onglet-vue-ensemble.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-vue-ensemble/onglet-vue-ensemble.html:58:42:
+      58 │ ...  <div class="champ__valeur">{{ m.formeJuridique ?? '��' }}</div>
+         ╵                                    ~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletVueEnsemble.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-vue-ensemble/onglet-vue-ensemble.ts:9:15:
+      9 │   templateUrl: './onglet-vue-ensemble.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-vue-ensemble/onglet-vue-ensemble.html:70:42:
+      70 │ ... <div class="champ__valeur">{{ m.secteurActivite ?? '��' }}</div>
+         ╵                                   ~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletVueEnsemble.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-vue-ensemble/onglet-vue-ensemble.ts:9:15:
+      9 │   templateUrl: './onglet-vue-ensemble.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8102: NG8102: The left side of this nullish coalescing operation does not include 'null' or 'undefined' in its type, therefore the '??' operator can be safely removed. Find more at https://v21.angular.dev/extended-diagnostics/NG8102 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-vue-ensemble/onglet-vue-ensemble.html:74:42:
+      74 │ ...     <div class="champ__valeur">{{ m.siegeSocial ?? '��' }}</div>
+         ╵                                       ~~~~~~~~~~~~~~~~~~~~
+
+  Warning occurs in the template of component OngletVueEnsemble.
+
+    src/app/features/personnes/pages/personne-detail/onglets/onglet-vue-ensemble/onglet-vue-ensemble.ts:9:15:
+      9 │   templateUrl: './onglet-vue-ensemble.html',
+        ╵                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8107: NG8107: The left side of this optional chain operation does not include 'null' or 'undefined' in its type, therefore the '?.' operator can be replaced with the '.' operator. Find more at https://v21.angular.dev/extended-diagnostics/NG8107 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/personne-detail.html:212:63:
+      212 │ ...<div class="stat-carte__valeur">{{ d.peines?.length || 0 }}</div>
+          ╵                                                 ~~~~~~
+
+  Warning occurs in the template of component PersonneDetail.
+
+    src/app/features/personnes/pages/personne-detail/personne-detail.ts:44:15:
+      44 │   templateUrl: './personne-detail.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8107: NG8107: The left side of this optional chain operation does not include 'null' or 'undefined' in its type, therefore the '?.' operator can be replaced with the '.' operator. Find more at https://v21.angular.dev/extended-diagnostics/NG8107 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/personne-detail.html:297:48:
+      297 │       <mat-tab [label]="'Peines (' + (d.peines?.length || 0) + ')'">
+          ╵                                                 ~~~~~~
+
+  Warning occurs in the template of component PersonneDetail.
+
+    src/app/features/personnes/pages/personne-detail/personne-detail.ts:44:15:
+      44 │   templateUrl: './personne-detail.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8107: NG8107: The left side of this optional chain operation does not include 'null' or 'undefined' in its type, therefore the '?.' operator can be replaced with the '.' operator. Find more at https://v21.angular.dev/extended-diagnostics/NG8107 [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-detail/personne-detail.html:304:54:
+      304 │ ...t-tab [label]="'Documents (' + (d.documents?.length || 0) + ')'">
+          ╵                                                 ~~~~~~
+
+  Warning occurs in the template of component PersonneDetail.
+
+    src/app/features/personnes/pages/personne-detail/personne-detail.ts:44:15:
+      44 │   templateUrl: './personne-detail.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8113: PageHeader is not used within the template of PersonneListe [plugin angular-compiler]
+
+    src/app/features/personnes/pages/personne-liste/personne-liste.ts:44:4:
+      44 │     PageHeader, EmptyState
+         ╵     ~~~~~~~~~~
+
+
+▲ [WARNING] NG8113: StatusBadge is not used within the template of ValidationListe [plugin angular-compiler]
+
+    src/app/features/validation/pages/validation-liste/validation-liste.ts:29:16:
+      29 │     PageHeader, StatusBadge, EmptyState
+         ╵                 ~~~~~~~~~~~
+
+
+✘ [ERROR] NG8004: No pipe found with name 'number'.
+To fix this, import the "DecimalPipe" class from "@angular/common" and add it to the "imports" array of the component. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.html:367:60:
+      367 │ ...�� {{ fait.montantPrejudice | number:'1.0-0' }} {{ fait.devise...
+          ╵                                ~~~~~~
+
+  Error occurs in the template of component NouveauDossier.
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:56:15:
+      56 │   templateUrl: './nouveau-dossier.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] Could not resolve "../../personnes/services/personne-detail.service"
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:14:38:
+      14 │ ...Service } from '../../personnes/services/personne-detail.service';
+         ╵                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] Could not resolve "../services/dossier-workflow.service"
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:15:39:
+      15 │ ...sierWorkflowService } from '../services/dossier-workflow.service';
+         ╵                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] Could not resolve "../../referentiels/services/source-signalement.service"
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:16:41:
+      16 │ ...ce } from '../../referentiels/services/source-signalement.servi...
+         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] Could not resolve "../../referentiels/services/role-implication.service"
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:17:39:
+      17 │ ...ice } from '../../referentiels/services/role-implication.service';
+         ╵               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] Could not resolve "../../referentiels/services/statut-judiciaire.service"
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:18:40:
+      18 │ ...ce } from '../../referentiels/services/statut-judiciaire.service';
+         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] Could not resolve "../../referentiels/services/entite-organisation.service"
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:19:42:
+      19 │ ...ce } from '../../referentiels/services/entite-organisation.serv...
+         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] Could not resolve "../../referentiels/services/type-infraction.service"
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:20:38:
+      20 │ ...vice } from '../../referentiels/services/type-infraction.service';
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../../personnes/services/personne-detail.service' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:20:61:
+      20 │ ...Complet } from '../../personnes/services/personne-detail.service';
+         ╵                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] Could not resolve "../../referentiels/services/zone-geographique.service"
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:21:40:
+      21 │ ...ce } from '../../referentiels/services/zone-geographique.service';
+         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../../personnes/models/personne.models' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:21:65:
+      21 │ ...nneMoraleResponse } from '../../personnes/models/personne.models';
+         ╵                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../services/dossier-workflow.service' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:22:70:
+      22 │ ...sierPersonneRequest } from '../services/dossier-workflow.service';
+         ╵                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../../referentiels/services/source-signalement.service' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:23:41:
+      23 │ ...ce } from '../../referentiels/services/source-signalement.servi...
+         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../../referentiels/services/role-implication.service' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:24:39:
+      24 │ ...ice } from '../../referentiels/services/role-implication.service';
+         ╵               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../../referentiels/services/statut-judiciaire.service' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:25:40:
+      25 │ ...ce } from '../../referentiels/services/statut-judiciaire.service';
+         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../../referentiels/services/entite-organisation.service' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:26:42:
+      26 │ ...ce } from '../../referentiels/services/entite-organisation.serv...
+         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../../referentiels/services/type-infraction.service' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:27:38:
+      27 │ ...vice } from '../../referentiels/services/type-infraction.service';
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../../referentiels/services/zone-geographique.service' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:28:40:
+      28 │ ...ce } from '../../referentiels/services/zone-geographique.service';
+         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2307: Cannot find module '../../referentiels/models/referentiel.models' or its corresponding type declarations. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:33:7:
+      33 │ } from '../../referentiels/models/referentiel.models';
+         ╵        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS2571: Object is of type 'unknown'. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:151:4:
+      151 │     this.personneDetailService.chargerToutesLesDonnees(id).subscr...
+          ╵     ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS7006: Parameter 'd' implicitly has an 'any' type. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:152:13:
+      152 │       next: (d) => { this.donnees.set(d); this.chargementPersonne...
+          ╵              ^
+
+
+✘ [ERROR] TS2571: Object is of type 'unknown'. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:157:4:
+      157 │     this.sourceService.lister().subscribe({ next: (d) => this.sou...
+          ╵     ~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS7006: Parameter 'd' implicitly has an 'any' type. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:157:51:
+      157 │ ...ce.lister().subscribe({ next: (d) => this.sources.set(d), erro...
+          ╵                                   ^
+
+
+✘ [ERROR] TS2571: Object is of type 'unknown'. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:158:4:
+      158 │     this.roleService.lister().subscribe({ next: (d) => this.roles...
+          ╵     ~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS7006: Parameter 'd' implicitly has an 'any' type. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:158:49:
+      158 │ ...ce.lister().subscribe({ next: (d) => this.roles.set(d), error:...
+          ╵                                   ^
+
+
+✘ [ERROR] TS2571: Object is of type 'unknown'. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:159:4:
+      159 │     this.statutJudiciaireService.lister().subscribe({ next: (d) =...
+          ╵     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS7006: Parameter 'd' implicitly has an 'any' type. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:159:61:
+      159 │ ...ce.lister().subscribe({ next: (d) => this.statutsJudiciaires.s...
+          ╵                                   ^
+
+
+✘ [ERROR] TS2571: Object is of type 'unknown'. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:160:4:
+      160 │     this.entiteService.lister().subscribe({ next: (d) => this.ent...
+          ╵     ~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS7006: Parameter 'd' implicitly has an 'any' type. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:160:51:
+      160 │ ...ce.lister().subscribe({ next: (d) => this.entites.set(d), erro...
+          ╵                                   ^
+
+
+✘ [ERROR] TS2571: Object is of type 'unknown'. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:161:4:
+      161 │     this.typeInfractionService.lister().subscribe({ next: (d) => ...
+          ╵     ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS7006: Parameter 'd' implicitly has an 'any' type. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:161:59:
+      161 │ ...ce.lister().subscribe({ next: (d) => this.typesInfraction.set(...
+          ╵                                   ^
+
+
+✘ [ERROR] TS2571: Object is of type 'unknown'. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:162:4:
+      162 │     this.zoneService.lister().subscribe({ next: (d) => this.zones...
+          ╵     ~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS7006: Parameter 'd' implicitly has an 'any' type. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:162:49:
+      162 │ ...ce.lister().subscribe({ next: (d) => this.zones.set(d), error:...
+          ╵                                   ^
+
+
+✘ [ERROR] TS2571: Object is of type 'unknown'. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:251:4:
+      251 │     this.workflowService.ajouterDossierAPersonne(id, request).sub...
+          ╵     ~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] TS7006: Parameter 'resp' implicitly has an 'any' type. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:252:13:
+      252 │       next: (resp) => {
+          ╵              ~~~~
+
+
+✘ [ERROR] TS7006: Parameter 'err' implicitly has an 'any' type. [plugin angular-compiler]
+
+    src/app/features/dossiers/pages/nouveau-dossier/nouveau-dossier.ts:257:14:
+      257 │       error: (err) => {
+          ╵               ~~~
+
+
+Watch mode enabled. Watching for file changes...
+
+
+
+
+
+sert toi de l'arborescence si toute fois tu te trompe 
+.
+├── app.config.ts
+├── app.html
+├── app.routes.ts
+├── app.scss
+├── app.spec.ts
+├── app.ts
+├── core
+│   ├── auth
+│   │   ├── auth.guard.ts
+│   │   ├── auth.service.ts
+│   │   └── keycloak-init.ts
+│   ├── interceptors
+│   │   ├── auth.interceptor.ts
+│   │   └── error.interceptor.ts
+│   └── services
+│       └── sidebar-state.service.ts
+├── features
+│   ├── administration
+│   │   └── administration-page
+│   │       ├── administration-page.html
+│   │       ├── administration-page.scss
+│   │       └── administration-page.ts
+│   ├── audit
+│   │   ├── models
+│   │   │   └── audit.models.ts
+│   │   ├── pages
+│   │   │   └── audit-vue
+│   │   │       ├── audit-vue.html
+│   │   │       ├── audit-vue.scss
+│   │   │       ├── audit-vue.ts
+│   │   │       └── onglets
+│   │   │           ├── onglet-audit-consultations
+│   │   │           │   ├── onglet-audit-consultations.html
+│   │   │           │   ├── onglet-audit-consultations.scss
+│   │   │           │   └── onglet-audit-consultations.ts
+│   │   │           └── onglet-audit-modifications
+│   │   │               ├── onglet-audit-modifications.html
+│   │   │               ├── onglet-audit-modifications.scss
+│   │   │               └── onglet-audit-modifications.ts
+│   │   └── services
+│   │       └── audit.service.ts
+│   ├── dashboard
+│   │   ├── models
+│   │   │   └── statistiques.models.ts
+│   │   ├── pages
+│   │   │   └── dashboard-vue
+│   │   │       ├── dashboard-vue.html
+│   │   │       ├── dashboard-vue.scss
+│   │   │       └── dashboard-vue.ts
+│   │   └── services
+│   │       └── statistiques.service.ts
+│   ├── documents
+│   │   ├── documents-page
+│   │   │   ├── documents-page.html
+│   │   │   ├── documents-page.scss
+│   │   │   └── documents-page.ts
+│   │   └── services
+│   │       └── document.service.ts
+│   ├── dossiers
+│   │   ├── models
+│   │   │   └── dossier.models.ts
+│   │   ├── pages
+│   │   │   ├── creation-dossier
+│   │   │   │   ├── creation-dossier.html
+│   │   │   │   ├── creation-dossier.scss
+│   │   │   │   └── creation-dossier.ts
+│   │   │   ├── dossier-detail
+│   │   │   │   ├── dossier-detail.html
+│   │   │   │   ├── dossier-detail.scss
+│   │   │   │   ├── dossier-detail.ts
+│   │   │   │   └── onglets
+│   │   │   │       ├── onglet-dossier-documents
+│   │   │   │       │   ├── onglet-dossier-documents.html
+│   │   │   │       │   ├── onglet-dossier-documents.scss
+│   │   │   │       │   └── onglet-dossier-documents.ts
+│   │   │   │       ├── onglet-dossier-faits
+│   │   │   │       │   ├── onglet-dossier-faits.html
+│   │   │   │       │   ├── onglet-dossier-faits.scss
+│   │   │   │       │   └── onglet-dossier-faits.ts
+│   │   │   │       └── onglet-dossier-implications
+│   │   │   │           ├── onglet-dossier-implications.html
+│   │   │   │           ├── onglet-dossier-implications.scss
+│   │   │   │           └── onglet-dossier-implications.ts
+│   │   │   ├── dossier-liste
+│   │   │   │   ├── dossier-liste.html
+│   │   │   │   ├── dossier-liste.scss
+│   │   │   │   └── dossier-liste.ts
+│   │   │   └── nouveau-dossier
+│   │   │       ├── nouveau-dossier.html
+│   │   │       ├── nouveau-dossier.scss
+│   │   │       └── nouveau-dossier.ts
+│   │   └── services
+│   │       ├── dossier.service.ts
+│   │       └── dossier-workflow.service.ts
+│   ├── personnes
+│   │   ├── models
+│   │   │   └── personne.models.ts
+│   │   ├── pages
+│   │   │   ├── ajouter-implication-dialog
+│   │   │   │   ├── ajouter-implication-dialog.html
+│   │   │   │   ├── ajouter-implication-dialog.scss
+│   │   │   │   └── ajouter-implication-dialog.ts
+│   │   │   ├── personne-creation
+│   │   │   │   ├── personne-creation.html
+│   │   │   │   ├── personne-creation.scss
+│   │   │   │   └── personne-creation.ts
+│   │   │   ├── personne-detail
+│   │   │   │   ├── onglets
+│   │   │   │   │   ├── onglet-documents
+│   │   │   │   │   │   ├── onglet-documents.html
+│   │   │   │   │   │   ├── onglet-documents.scss
+│   │   │   │   │   │   └── onglet-documents.ts
+│   │   │   │   │   ├── onglet-dossiers-implications
+│   │   │   │   │   │   ├── onglet-dossiers-implications.html
+│   │   │   │   │   │   ├── onglet-dossiers-implications.scss
+│   │   │   │   │   │   └── onglet-dossiers-implications.ts
+│   │   │   │   │   ├── onglet-infos
+│   │   │   │   │   │   ├── onglet-infos.html
+│   │   │   │   │   │   ├── onglet-infos.scss
+│   │   │   │   │   │   └── onglet-infos.ts
+│   │   │   │   │   ├── onglet-peines
+│   │   │   │   │   │   ├── onglet-peines.html
+│   │   │   │   │   │   ├── onglet-peines.scss
+│   │   │   │   │   │   └── onglet-peines.ts
+│   │   │   │   │   ├── onglet-timeline
+│   │   │   │   │   │   ├── onglet-timeline.html
+│   │   │   │   │   │   ├── onglet-timeline.scss
+│   │   │   │   │   │   └── onglet-timeline.ts
+│   │   │   │   │   └── onglet-vue-ensemble
+│   │   │   │   │       ├── onglet-vue-ensemble.html
+│   │   │   │   │       ├── onglet-vue-ensemble.scss
+│   │   │   │   │       └── onglet-vue-ensemble.ts
+│   │   │   │   ├── personne-detail.html
+│   │   │   │   ├── personne-detail.scss
+│   │   │   │   └── personne-detail.ts
+│   │   │   ├── personne-liste
+│   │   │   │   ├── personne-liste.html
+│   │   │   │   ├── personne-liste.scss
+│   │   │   │   └── personne-liste.ts
+│   │   │   ├── personne-morale-form-dialog
+│   │   │   │   ├── personne-morale-form-dialog.html
+│   │   │   │   ├── personne-morale-form-dialog.scss
+│   │   │   │   └── personne-morale-form-dialog.ts
+│   │   │   ├── personne-physique-form-dialog
+│   │   │   │   ├── personne-physique-form-dialog.html
+│   │   │   │   ├── personne-physique-form-dialog.scss
+│   │   │   │   └── personne-physique-form-dialog.ts
+│   │   │   ├── personne-recherche
+│   │   │   │   ├── personne-recherche.html
+│   │   │   │   ├── personne-recherche.scss
+│   │   │   │   └── personne-recherche.ts
+│   │   │   └── reprocher-fait-dialog
+│   │   │       ├── reprocher-fait-dialog.html
+│   │   │       ├── reprocher-fait-dialog.scss
+│   │   │       └── reprocher-fait-dialog.ts
+│   │   └── services
+│   │       ├── alias.service.ts
+│   │       ├── personne-detail.service.ts
+│   │       ├── personne-morale.service.ts
+│   │       ├── personne-photo.service.ts
+│   │       ├── personne-physique.service.ts
+│   │       ├── personne.service.ts
+│   │       └── piece-identite.service.ts
+│   ├── rapports
+│   │   └── rapports-page
+│   │       ├── rapports-page.html
+│   │       ├── rapports-page.scss
+│   │       └── rapports-page.ts
+│   ├── referentiels
+│   │   ├── categories-infraction
+│   │   │   ├── categorie-infraction-form-dialog
+│   │   │   │   ├── categorie-infraction-form-dialog.html
+│   │   │   │   ├── categorie-infraction-form-dialog.scss
+│   │   │   │   └── categorie-infraction-form-dialog.ts
+│   │   │   └── categorie-infraction-liste
+│   │   │       ├── categorie-infraction-liste.html
+│   │   │       ├── categorie-infraction-liste.scss
+│   │   │       └── categorie-infraction-liste.ts
+│   │   ├── models
+│   │   │   └── referentiel.models.ts
+│   │   ├── pages
+│   │   │   ├── entites-organisation-page
+│   │   │   │   ├── entites-organisation-page.html
+│   │   │   │   ├── entites-organisation-page.scss
+│   │   │   │   └── entites-organisation-page.ts
+│   │   │   ├── hierarchie-dialog
+│   │   │   │   ├── hierarchie-dialog.html
+│   │   │   │   ├── hierarchie-dialog.scss
+│   │   │   │   └── hierarchie-dialog.ts
+│   │   │   ├── referentiel-hierarchique
+│   │   │   │   ├── referentiel-hierarchique.html
+│   │   │   │   ├── referentiel-hierarchique.scss
+│   │   │   │   └── referentiel-hierarchique.ts
+│   │   │   ├── referentiels-hub
+│   │   │   │   ├── referentiels-hub.html
+│   │   │   │   ├── referentiels-hub.scss
+│   │   │   │   └── referentiels-hub.ts
+│   │   │   ├── referentiel-simple-dialog
+│   │   │   │   ├── referentiel-simple-dialog.html
+│   │   │   │   ├── referentiel-simple-dialog.scss
+│   │   │   │   └── referentiel-simple-dialog.ts
+│   │   │   ├── referentiel-simple-liste
+│   │   │   │   ├── referentiel-simple-liste.html
+│   │   │   │   ├── referentiel-simple-liste.scss
+│   │   │   │   └── referentiel-simple-liste.ts
+│   │   │   ├── roles-implication-page
+│   │   │   │   ├── roles-implication-page.html
+│   │   │   │   ├── roles-implication-page.scss
+│   │   │   │   └── roles-implication-page.ts
+│   │   │   ├── sources-signalement-page
+│   │   │   │   ├── sources-signalement-page.html
+│   │   │   │   ├── sources-signalement-page.scss
+│   │   │   │   └── sources-signalement-page.ts
+│   │   │   ├── statuts-judiciaires-page
+│   │   │   │   ├── statuts-judiciaires-page.html
+│   │   │   │   ├── statuts-judiciaires-page.scss
+│   │   │   │   └── statuts-judiciaires-page.ts
+│   │   │   ├── type-infraction-dialog
+│   │   │   │   ├── type-infraction-dialog.html
+│   │   │   │   ├── type-infraction-dialog.scss
+│   │   │   │   └── type-infraction-dialog.ts
+│   │   │   ├── types-document-page
+│   │   │   │   ├── types-document-page.html
+│   │   │   │   ├── types-document-page.scss
+│   │   │   │   └── types-document-page.ts
+│   │   │   ├── types-infraction-page
+│   │   │   │   ├── types-infraction-page.html
+│   │   │   │   ├── types-infraction-page.scss
+│   │   │   │   └── types-infraction-page.ts
+│   │   │   └── zones-geographiques-page
+│   │   │       ├── zones-geographiques-page.html
+│   │   │       ├── zones-geographiques-page.scss
+│   │   │       └── zones-geographiques-page.ts
+│   │   └── services
+│   │       ├── categorie-infraction.service.ts
+│   │       ├── entite-organisation.service.ts
+│   │       ├── referentiel-crud.interface.ts
+│   │       ├── role-implication.service.ts
+│   │       ├── source-signalement.service.ts
+│   │       ├── statut-judiciaire.service.ts
+│   │       ├── type-document.service.ts
+│   │       ├── type-infraction.service.ts
+│   │       └── zone-geographique.service.ts
+│   └── validation
+│       └── pages
+│           ├── motif-rejet-dialog
+│           │   ├── motif-rejet-dialog.html
+│           │   ├── motif-rejet-dialog.scss
+│           │   └── motif-rejet-dialog.ts
+│           └── validation-liste
+│               ├── validation-liste.html
+│               ├── validation-liste.scss
+│               └── validation-liste.ts
+├── layout
+│   ├── main-layout
+│   │   ├── main-layout.html
+│   │   ├── main-layout.scss
+│   │   └── main-layout.ts
+│   ├── sidebar
+│   │   ├── sidebar.html
+│   │   ├── sidebar.scss
+│   │   └── sidebar.ts
+│   └── topbar
+│       ├── topbar.html
+│       ├── topbar.scss
+│       └── topbar.ts
+└── shared
+    ├── access-denied
+    │   ├── access-denied.html
+    │   ├── access-denied.scss
+    │   └── access-denied.ts
+    ├── en-construction
+    │   ├── en-construction.html
+    │   ├── en-construction.scss
+    │   └── en-construction.ts
+    ├── services
+    │   └── confirmation.service.ts
+    ├── ui
+    │   ├── bar-chart
+    │   │   ├── bar-chart.html
+    │   │   ├── bar-chart.scss
+    │   │   └── bar-chart.ts
+    │   ├── confirm-dialog
+    │   │   ├── confirm-dialog.html
+    │   │   ├── confirm-dialog.scss
+    │   │   └── confirm-dialog.ts
+    │   ├── empty-state
+    │   │   ├── empty-state.html
+    │   │   ├── empty-state.scss
+    │   │   └── empty-state.ts
+    │   ├── page-header
+    │   │   ├── page-header.html
+    │   │   ├── page-header.scss
+    │   │   └── page-header.ts
+    │   ├── stat-card-executif
+    │   │   ├── stat-card-executif.html
+    │   │   ├── stat-card-executif.scss
+    │   │   └── stat-card-executif.ts
+    │   ├── stat-mini-card
+    │   │   ├── stat-mini-card.html
+    │   │   ├── stat-mini-card.scss
+    │   │   └── stat-mini-card.ts
+    │   └── status-badge
+    │       ├── status-badge.html
+    │       ├── status-badge.scss
+    │       └── status-badge.ts
+    └── utils
+        └── http-error.util.ts
+
+98 directories, 211 files
+gid@gid-Latitude-E5450:~/Documents/MON_STAGE/Les livrables/LOG/logintegrite_frontend/src/app$ 
+
+
