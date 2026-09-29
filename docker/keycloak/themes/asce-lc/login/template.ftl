@@ -140,10 +140,10 @@
       </div>
       <div class="asce-brand-mid">
         <span class="asce-brand-star"></span>
-        <p class="asce-brand-tagline">Gérez votre agenda institutionnel depuis un seul endroit.</p>
-        <p class="asce-brand-features">Événements&nbsp;&middot;&nbsp;Participants&nbsp;&middot;&nbsp;Documents&nbsp;&middot;&nbsp;Statistiques</p>
+        <p class="asce-brand-tagline">Base de données sécurisée des personnes épinglées pour corruption et malversations financières.</p>
+        <p class="asce-brand-features">Registre officiel&nbsp;&middot;&nbsp;Dossiers&nbsp;&middot;&nbsp;Validation&nbsp;&middot;&nbsp;Audit</p>
       </div>
-      <p class="asce-brand-copyright">&copy; 2026 ASCE-LC &mdash; CGE Agenda</p>
+      <p class="asce-brand-copyright">&copy; 2026 ASCE-LC &mdash; Log Intégrité</p>
     </aside>
     <header id="kc-header" class="pf-v5-c-login__header">
       <div id="kc-header-wrapper"
