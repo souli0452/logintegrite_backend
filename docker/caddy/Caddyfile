@@ -1,0 +1,49 @@
+# Reverse proxy de production : UN SEUL nom de domaine, TLS automatique, en-tetes de securite.
+#   https://DOMAIN/        application (frontend)
+#   https://DOMAIN/api/    API (backend)
+#   https://DOMAIN/auth/   Keycloak (connexion)
+#
+#   DOMAIN       nom de domaine unique, ex. logintegrite.asce-lc.bf
+#   TLS_MODE     "internal" (autorite locale Caddy, tests) ou une adresse e-mail (Let's Encrypt)
+#   ADMIN_ALLOW  "private_ranges" ou une liste de CIDR autorises pour la console Keycloak
+
+{$DOMAIN} {
+	tls {$TLS_MODE}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	encode zstd gzip
+
+	handle /auth/* {
+		# Console d'administration Keycloak et realm master : reseau autorise uniquement.
+		# (Doit etre DANS le bloc handle : Caddy evalue "handle" avant un "respond" place a cote.)
+		@console_interdite {
+			path /auth/admin* /auth/realms/master*
+			not remote_ip {$ADMIN_ALLOW}
+		}
+		respond @console_interdite "Acces refuse" 403
+
+		reverse_proxy keycloak:8080
+	}
+
+	handle /api/* {
+		request_body {
+			max_size 110MB
+		}
+		reverse_proxy backend:8080
+	}
+
+	# Tout le reste : l'application. Meme origine que l'API et Keycloak => pas de CORS.
+	handle {
+		header {
+			X-Frame-Options "SAMEORIGIN"
+			# Mode "report only" : observer les violations avant de basculer en Content-Security-Policy.
+			Content-Security-Policy-Report-Only "default-src 'self'; connect-src 'self'; frame-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+		}
+		reverse_proxy frontend:80
+	}
+}

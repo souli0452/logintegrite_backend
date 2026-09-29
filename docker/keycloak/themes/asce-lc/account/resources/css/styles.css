@@ -1,0 +1,67 @@
+/* ============================================================
+   CGE AGENDA — ASCE-L  |  Account console theme (surcharge)
+   Le compte console (React / PatternFly v5) ne peut pas etre
+   habille en profondeur comme la page de login : on surcharge les
+   variables PatternFly globales + quelques classes cle pour
+   remplacer le bleu/noir par defaut par l'identite verte ASCE-LC.
+   ============================================================ */
+
+:root {
+  --pf-v5-global--primary-color--100: #009640 !important;
+  --pf-v5-global--primary-color--200: #006e2f !important;
+  --pf-v5-global--link--Color: #009640 !important;
+  --pf-v5-global--link--Color--hover: #006e2f !important;
+  --pf-v5-global--active-color--100: #009640 !important;
+}
+
+/* --- Bandeau superieur : logo ASCE-LC a la place du logo Keycloak --- */
+.pf-v5-c-masthead__brand {
+  background: url("../img/logo.png") no-repeat left center;
+  background-size: contain;
+  width: 170px;
+  height: 40px;
+}
+.pf-v5-c-masthead__brand img { display: none; }
+
+.pf-v5-c-masthead {
+  background-color: #ffffff !important;
+  border-bottom: 3px solid #009640;
+}
+
+/* La barre d'outils (nom d'utilisateur, icone menu) a son propre fond
+   fonce par defaut, distinct de .pf-v5-c-masthead : a neutraliser aussi. */
+.pf-v5-c-masthead .pf-v5-c-toolbar {
+  background-color: transparent !important;
+}
+
+/* Le nom d'utilisateur et l'icone du menu superieur restent lisibles sur fond clair */
+.pf-v5-c-masthead .pf-v5-c-menu-toggle,
+.pf-v5-c-masthead .pf-v5-c-menu-toggle__text,
+.pf-v5-c-masthead .pf-v5-c-menu-toggle__icon,
+.pf-v5-c-masthead .pf-v5-c-dropdown__toggle,
+.pf-v5-c-masthead .pf-v5-c-button,
+.pf-v5-c-masthead svg {
+  color: #0f172a !important;
+  fill: #0f172a !important;
+}
+
+/* --- Navigation laterale : lien actif en vert ASCE-LC --- */
+.pf-v5-c-nav__link.pf-m-current,
+.pf-v5-c-nav__link.pf-m-current:hover {
+  color: #009640 !important;
+}
+.pf-v5-c-nav__link.pf-m-current::after {
+  border-color: #009640 !important;
+}
+.pf-v5-c-nav__link:hover {
+  color: #006e2f !important;
+}
+
+/* --- Boutons primaires --- */
+.pf-v5-c-button.pf-m-primary {
+  background-color: #009640 !important;
+}
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-v5-c-button.pf-m-primary:focus {
+  background-color: #006e2f !important;
+}

@@ -1,24 +1,22 @@
-# On utilise une image contenant Maven et Java 17 (modifie le 17 si tu utilises Java 21)
+# ---- Build : compile et empaquete le jar (Java 17) ----
 FROM maven:3.9-eclipse-temurin-17 AS builder
 WORKDIR /build
 
-# On copie le fichier de configuration Maven et le code source
+# Les dependances sont resolues dans une couche separee : elle n'est reconstruite que si le pom change.
 COPY pom.xml .
+RUN mvn -q -B dependency:go-offline
+
 COPY src ./src
+RUN mvn -q -B clean package -DskipTests
 
-# On compile le projet et on génère le fichier .jar en ignorant les tests pour aller plus vite
-RUN mvn clean package -DskipTests
-
-# Étape 2 : Exécution (Run)
-# On utilise une image plus légère avec uniquement le JRE (Java Runtime Environment)
+# ---- Run : JRE seul, utilisateur sans privileges ----
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# On récupère le fichier .jar généré à l'étape précédente
-COPY --from=builder /build/target/*.jar app.jar
+RUN addgroup -S app && adduser -S app -G app \
+    && mkdir -p /app/storage/documents && chown -R app:app /app
+COPY --from=builder --chown=app:app /build/target/*.jar app.jar
 
-# On expose le port sur lequel l'application va tourner
+USER app
 EXPOSE 8080
-
-# Commande de démarrage de l'application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]

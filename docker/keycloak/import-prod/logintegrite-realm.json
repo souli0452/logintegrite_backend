@@ -1,0 +1,92 @@
+{
+  "realm": "logintegrite",
+  "enabled": true,
+  "displayName": "Log Integrite",
+  "loginTheme": "asce-lc",
+  "accountTheme": "asce-lc",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr"],
+  "defaultLocale": "fr",
+  "sslRequired": "all",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "maxFailureWaitSeconds": 900,
+  "permanentLockout": false,
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and notUsername()",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "eventsEnabled": true,
+  "eventsExpiration": 7776000,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false,
+  "defaultRole": {
+    "name": "default-roles-logintegrite",
+    "composite": true,
+    "composites": { "realm": ["CONSULTANT", "offline_access", "uma_authorization"] }
+  },
+  "roles": {
+    "realm": [
+      { "name": "CONSULTANT", "description": "Consultation" },
+      { "name": "AGENT", "description": "Agent saisie" },
+      { "name": "VALIDATEUR", "description": "Validateur des fiches" },
+      { "name": "ADMIN", "description": "Administrateur" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "logintegrite-backend",
+      "name": "Log Integrite (frontend Angular)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "rootUrl": "${APP_URL}",
+      "baseUrl": "/",
+      "redirectUris": ["${APP_URL}/*"],
+      "webOrigins": ["${APP_URL}"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${APP_URL}/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-logintegrite-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "logintegrite-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "logintegrite-admin-api",
+      "name": "Log Integrite (API admin backend)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${KC_ADMIN_API_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-logintegrite-admin-api",
+      "enabled": true,
+      "serviceAccountClientId": "logintegrite-admin-api",
+      "clientRoles": { "realm-management": ["view-users", "query-users", "manage-users", "view-realm"] }
+    }
+  ]
+}

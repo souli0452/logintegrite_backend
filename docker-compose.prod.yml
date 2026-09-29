@@ -1,0 +1,173 @@
+name: logintegrite-prod
+
+# Pile de PRODUCTION : HTTPS (Caddy), Keycloak en mode production, roles Postgres a moindre privilege,
+# sauvegardes automatiques. Seul Caddy publie des ports.
+#   cp .env.prod.example .env.prod   (puis remplacer toutes les valeurs)
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-durci: &durci
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+networks:
+  edge:      # exposee via Caddy
+  interne:   # base de donnees : aucun acces depuis l'exterieur
+    internal: true
+
+volumes:
+  postgres_data:
+  storage_data:
+  backups:
+  caddy_data:
+  caddy_config:
+
+services:
+
+  caddy:
+    <<: *durci
+    image: caddy:2
+    container_name: lip-caddy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN manquant}
+      TLS_MODE: ${TLS_MODE:?TLS_MODE manquant (internal ou e-mail Let's Encrypt)}
+      ADMIN_ALLOW: ${ADMIN_ALLOW:-private_ranges}
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+    depends_on: [frontend, backend, keycloak]
+
+  postgres:
+    <<: *durci
+    image: postgres:16
+    container_name: lip-postgres
+    environment:
+      POSTGRES_DB: logintegrite_db
+      POSTGRES_USER: lip_admin
+      POSTGRES_PASSWORD: ${PG_ADMIN_PASSWORD:?PG_ADMIN_PASSWORD manquant}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?}
+      DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD:?}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-prod.sh:/docker-entrypoint-initdb.d/init-prod.sh:ro
+    networks: [interne]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lip_admin -d logintegrite_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    <<: *durci
+    image: quay.io/keycloak/keycloak:26.4.7
+    container_name: lip-keycloak
+    command: start --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:?KC_ADMIN_PASSWORD manquant}
+      # Derriere Caddy : l'URL publique est en HTTPS, Keycloak lui-meme ecoute en HTTP interne.
+      KC_HOSTNAME: https://${DOMAIN}/auth
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      # Substitues dans le realm a l'import
+      APP_URL: https://${DOMAIN}
+      KC_ADMIN_API_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET manquant}
+    volumes:
+      - ./docker/keycloak/import-prod:/opt/keycloak/data/import:ro
+      - ./docker/keycloak/themes/asce-lc:/opt/keycloak/themes/asce-lc:ro
+    networks: [edge, interne]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    <<: *durci
+    build: .
+    image: logintegrite-backend:prod
+    container_name: lip-backend
+    cap_drop: [ALL]
+    environment:
+      # Execution : role applicatif (DML seulement). Migrations : role proprietaire (DDL).
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logintegrite_db
+      SPRING_DATASOURCE_USERNAME: logintegrite_app
+      SPRING_DATASOURCE_PASSWORD: ${DB_APP_PASSWORD}
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5432/logintegrite_db
+      SPRING_FLYWAY_USER: logintegrite_owner
+      SPRING_FLYWAY_PASSWORD: ${DB_OWNER_PASSWORD}
+      JWT_ISSUER_URI: https://${DOMAIN}/auth/realms/logintegrite
+      JWT_JWK_SET_URI: http://keycloak:8080/auth/realms/logintegrite/protocol/openid-connect/certs
+      KEYCLOAK_ADMIN_SERVER_URL: http://keycloak:8080/auth
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+      CORS_ALLOWED_ORIGINS: https://${DOMAIN}
+      STORAGE_DIR: /app/storage/documents
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+    volumes:
+      - storage_data:/app/storage
+    networks: [edge, interne]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+
+  frontend:
+    <<: *durci
+    build:
+      context: ${FRONTEND_CONTEXT:-../logintegrite_frontend}
+      args:
+        NG_CONFIGURATION: production
+        API_URL: https://${DOMAIN}/api/v1
+        KEYCLOAK_URL: https://${DOMAIN}/auth
+    image: logintegrite-frontend:prod
+    container_name: lip-frontend
+    networks: [edge]
+
+  backup:
+    <<: *durci
+    image: postgres:16
+    container_name: lip-backup
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: logintegrite_backup
+      PGPASSWORD: ${DB_BACKUP_PASSWORD}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      # Utilises uniquement par restore.sh (creation de la base de verification)
+      RESTORE_PGUSER: lip_admin
+      RESTORE_PGPASSWORD: ${PG_ADMIN_PASSWORD}
+    volumes:
+      - ./docker/backup/backup.sh:/backup.sh:ro
+      - ./docker/backup/restore.sh:/restore.sh:ro
+      - backups:/backups
+      - storage_data:/data/storage:ro
+    networks: [interne]
+    depends_on:
+      postgres:
+        condition: service_healthy
