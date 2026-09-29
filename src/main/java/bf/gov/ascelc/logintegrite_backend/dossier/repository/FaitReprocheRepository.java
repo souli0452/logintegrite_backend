@@ -22,6 +22,10 @@ public interface FaitReprocheRepository extends JpaRepository<FaitReproche, UUID
     @Query("SELECT f.zoneGeographique.libelle, COUNT(f) FROM FaitReproche f WHERE f.zoneGeographique IS NOT NULL GROUP BY f.zoneGeographique.libelle")
     List<Object[]> compterParZone();
 
+    /** [dossierId, nombre de faits reproches] pour tous les dossiers, en une requete. */
+    @Query("SELECT f.dossier.id, COUNT(f) FROM FaitReproche f GROUP BY f.dossier.id")
+    List<Object[]> compterParDossier();
+
     Page<FaitReproche> findByStatutValidation(StatutValidation statutValidation, Pageable pageable);
     List<FaitReproche> findByStatutValidation(StatutValidation statut);
 }
