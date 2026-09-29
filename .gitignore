@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets et donnees d'execution (ne jamais versionner) ###
+.env
+storage/
+uploads/
+backend_dump*.txt
+frontend_specs_dump.txt
+
+.env.prod
