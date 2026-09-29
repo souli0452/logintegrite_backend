@@ -5,6 +5,7 @@ import bf.gov.ascelc.logintegrite_backend.audit.service.AuditService;
 import bf.gov.ascelc.logintegrite_backend.audit.service.ConsultationService;
 import bf.gov.ascelc.logintegrite_backend.common.exception.ResourceNotFoundException;
 import bf.gov.ascelc.logintegrite_backend.common.security.CurrentUserProvider;
+import bf.gov.ascelc.logintegrite_backend.common.storage.FichierValidator;
 import bf.gov.ascelc.logintegrite_backend.common.storage.StorageService;
 import bf.gov.ascelc.logintegrite_backend.document.dto.request.DocumentRequest;
 import bf.gov.ascelc.logintegrite_backend.document.dto.response.DocumentResponse;
@@ -26,9 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,6 +47,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final ImplicationRepository implicationRepository;
     private final TypeDocumentRepository typeDocumentRepository;
     private final StorageService storageService;
+    private final FichierValidator fichierValidator;
     private final CurrentUserProvider currentUserProvider;
     private final DocumentMapper mapper;
     private final AuditService auditService;
@@ -61,7 +65,8 @@ public class DocumentServiceImpl implements DocumentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Dossier", dossierId));
 
         MultipartFile fichier = request.getFichier();
-        String nomStockage = UUID.randomUUID() + extraireExtension(fichier.getOriginalFilename());
+        FichierValidator.FichierValide valide = fichierValidator.valider(fichier);
+        String nomStockage = UUID.randomUUID() + "." + valide.extension();
 
         String hash;
         String cheminStockage;
@@ -76,10 +81,10 @@ public class DocumentServiceImpl implements DocumentService {
         document.setDossier(dossier);
         document.setTypeDocument(typeDocumentRepository.findById(request.getTypeDocumentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Type de document", request.getTypeDocumentId())));
-        document.setNomOriginal(fichier.getOriginalFilename());
+        document.setNomOriginal(valide.nomOriginal());
         document.setNomStockage(nomStockage);
         document.setCheminStockage(cheminStockage);
-        document.setTypeMime(fichier.getContentType());
+        document.setTypeMime(valide.typeMime());
         document.setTailleOctets(fichier.getSize());
         document.setHashIntegrite(hash);
         document.setImmuable(true);
@@ -148,20 +153,16 @@ public class DocumentServiceImpl implements DocumentService {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Document", id));
     }
 
-    private String extraireExtension(String nomFichier) {
-        if (nomFichier == null || !nomFichier.contains(".")) return "";
-        return nomFichier.substring(nomFichier.lastIndexOf('.'));
-    }
-
+    /** SHA-256 calcule en flux (pas de chargement du fichier entier en memoire). */
     private String calculerHashSha256(MultipartFile fichier) throws IOException {
-        try {
+        try (InputStream in = fichier.getInputStream()) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(fichier.getBytes());
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hashBytes) {
-                hex.append(String.format("%02x", b));
+            byte[] tampon = new byte[8192];
+            int lus;
+            while ((lus = in.read(tampon)) != -1) {
+                digest.update(tampon, 0, lus);
             }
-            return hex.toString();
+            return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 indisponible", e);
         }

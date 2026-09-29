@@ -4,6 +4,7 @@ package bf.gov.ascelc.logintegrite_backend.audit.service.impl;
 import bf.gov.ascelc.logintegrite_backend.audit.entity.JournalAudit;
 import bf.gov.ascelc.logintegrite_backend.audit.repository.JournalAuditRepository;
 import bf.gov.ascelc.logintegrite_backend.audit.service.AuditService;
+import bf.gov.ascelc.logintegrite_backend.common.security.ClientIp;
 import bf.gov.ascelc.logintegrite_backend.common.security.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ public class AuditServiceImpl implements AuditService {
         journal.setValeurAvant(versJson(valeurAvant));
         journal.setValeurApres(versJson(valeurApres));
         journal.setDateAction(Instant.now());
+        ClientIp.courante().ifPresent(journal::setAdresseIp);
         repository.save(journal);
     }
 

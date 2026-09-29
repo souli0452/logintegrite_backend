@@ -1,6 +1,7 @@
 package bf.gov.ascelc.logintegrite_backend.referentiel.controller;
 
 import bf.gov.ascelc.logintegrite_backend.referentiel.dto.request.CategorieInfractionRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import bf.gov.ascelc.logintegrite_backend.referentiel.dto.response.CategorieInfractionResponse;
 import bf.gov.ascelc.logintegrite_backend.referentiel.service.CategorieInfractionService;
 import jakarta.validation.Valid;
@@ -24,17 +25,20 @@ public class CategorieInfractionController {
     @GetMapping("/{id}")
     public CategorieInfractionResponse obtenir(@PathVariable UUID id) { return service.obtenir(id); }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CategorieInfractionResponse creer(@Valid @RequestBody CategorieInfractionRequest request) {
         return service.creer(request);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public CategorieInfractionResponse modifier(@PathVariable UUID id, @Valid @RequestBody CategorieInfractionRequest request) {
         return service.modifier(id, request);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void supprimer(@PathVariable UUID id) { service.supprimer(id); }

@@ -2,6 +2,7 @@
 package bf.gov.ascelc.logintegrite_backend.rapport.controller;
 
 import bf.gov.ascelc.logintegrite_backend.personne.dto.request.PersonneSearchCriteria;
+import org.springframework.security.access.prepost.PreAuthorize;
 import bf.gov.ascelc.logintegrite_backend.rapport.service.RapportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@PreAuthorize("hasAnyRole('AGENT','VALIDATEUR','ADMIN')")
 @RestController
 @RequestMapping("/api/v1/rapports")
 @RequiredArgsConstructor

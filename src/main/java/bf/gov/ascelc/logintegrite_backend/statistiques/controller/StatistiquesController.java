@@ -1,6 +1,7 @@
 package bf.gov.ascelc.logintegrite_backend.statistiques.controller;
 
 import bf.gov.ascelc.logintegrite_backend.statistiques.dto.response.DashboardExecutifResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import bf.gov.ascelc.logintegrite_backend.statistiques.service.DashboardExecutifService;
 // Gardez vos imports existants (StatistiqueService, StatistiquesGlobalesResponse) si votre controller les utilise deja
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@PreAuthorize("hasAnyRole('AGENT','VALIDATEUR','ADMIN')")
 @RestController
 @RequestMapping("/api/v1/statistiques")
 @RequiredArgsConstructor

@@ -2,6 +2,7 @@
 package bf.gov.ascelc.logintegrite_backend.dossier.controller;
 
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.request.ImplicationFaitRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.request.MiseAJourStatutJudiciaireRequest;
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.response.ImplicationFaitResponse;
 import bf.gov.ascelc.logintegrite_backend.dossier.service.ImplicationFaitService;
@@ -24,12 +25,14 @@ public class ImplicationFaitController {
         return service.listerParImplication(implicationId);
     }
 
+    @PreAuthorize("hasAnyRole('AGENT','VALIDATEUR','ADMIN')")
     @PostMapping("/api/v1/implications/{implicationId}/liaisons-faits")
     @ResponseStatus(HttpStatus.CREATED)
     public ImplicationFaitResponse creer(@PathVariable UUID implicationId, @Valid @RequestBody ImplicationFaitRequest request) {
         return service.creer(implicationId, request);
     }
 
+    @PreAuthorize("hasAnyRole('AGENT','VALIDATEUR','ADMIN')")
     @PutMapping("/api/v1/liaisons-faits/{implicationFaitId}/statut")
     public ImplicationFaitResponse mettreAJourStatut(@PathVariable UUID implicationFaitId,
                                                        @Valid @RequestBody MiseAJourStatutJudiciaireRequest request) {

@@ -5,14 +5,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Traduit les violations de contraintes PostgreSQL en reponses HTTP lisibles, au meme format
+ * (ProblemDetail + propriete "message") que le reste de l'API. Le texte brut de l'erreur SQL
+ * (noms de tables, de contraintes) n'est jamais renvoye au client : il reste dans les logs.
+ */
 @RestControllerAdvice
 public class DataIntegrityHandler {
 
@@ -26,8 +31,7 @@ public class DataIntegrityHandler {
     private static final Pattern PATTERN_NOT_NULL =
         Pattern.compile("null value in column \"([^\"]+)\".*violates not-null");
 
-    // FK : insert or update on table "..." violates foreign key constraint "fk_xxx"
-    //      Key (source_signalement_id)=(...) is not present in table "source_signalement".
+    // FK : Key (source_signalement_id)=(...) is not present in table "source_signalement".
     private static final Pattern PATTERN_FK =
         Pattern.compile("Key \\(([^)]+)\\)=\\(([^)]+)\\) is not present in table \"([^\"]+)\"");
 
@@ -36,62 +40,58 @@ public class DataIntegrityHandler {
         Pattern.compile("violates check constraint \"([^\"]+)\"");
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String, Object>> gerer(DataIntegrityViolationException ex) {
+    public ProblemDetail gerer(DataIntegrityViolationException ex) {
         String cause = ex.getMostSpecificCause().getMessage();
         String texte = cause != null ? cause : "";
 
-        // Log complet pour debug côté serveur (essentiel pour tracer les cas intermittents)
-        log.warn("Violation d'integrite: {}", texte);
-
-        // 1. Doublon UNIQUE → 409 Conflict (vraie sémantique de conflit d'existence)
+        // 1. Doublon UNIQUE -> 409 Conflict
         Matcher m = PATTERN_DOUBLON.matcher(texte);
         if (m.find()) {
-            return reponse(HttpStatus.CONFLICT, "Conflict", String.format(
-                "La valeur '%s' existe deja pour le champ '%s'.",
-                m.group(2), m.group(1)));
+            return probleme(HttpStatus.CONFLICT, "Conflit de donnees", String.format(
+                "La valeur '%s' existe deja pour le champ '%s'.", m.group(2), m.group(1)));
         }
 
-        // 2. NOT NULL manquant → 400 Bad Request
+        // 2. NOT NULL manquant -> 400
         m = PATTERN_NOT_NULL.matcher(texte);
         if (m.find()) {
-            return reponse(HttpStatus.BAD_REQUEST, "Bad Request", String.format(
-                "Le champ '%s' est obligatoire mais n'a pas ete fourni.",
-                m.group(1)));
+            return probleme(HttpStatus.BAD_REQUEST, "Requete invalide", String.format(
+                "Le champ '%s' est obligatoire mais n'a pas ete fourni.", m.group(1)));
         }
 
-        // 3. Foreign key invalide → 400 Bad Request
+        // 3. Foreign key invalide -> 400
         m = PATTERN_FK.matcher(texte);
         if (m.find()) {
-            return reponse(HttpStatus.BAD_REQUEST, "Bad Request", String.format(
-                "La reference '%s' pointe vers un enregistrement inexistant dans '%s'.",
-                m.group(1), m.group(3)));
+            return probleme(HttpStatus.BAD_REQUEST, "Requete invalide", String.format(
+                "La reference '%s' pointe vers un enregistrement inexistant.", m.group(1)));
         }
 
-        // 4. Check constraint → 400 Bad Request
+        // 4. Check constraint -> 400
         m = PATTERN_CHECK.matcher(texte);
         if (m.find()) {
-            return reponse(HttpStatus.BAD_REQUEST, "Bad Request", String.format(
-                "La contrainte de coherence '%s' n'est pas respectee.",
-                m.group(1)));
+            return probleme(HttpStatus.BAD_REQUEST, "Requete invalide",
+                "Une regle de coherence des donnees n'est pas respectee.");
         }
 
-        // 5. Troncature de chaine (varchar trop court) → 400 Bad Request
+        // 5. Troncature de chaine (varchar trop court) -> 400
         if (texte.contains("value too long for type")) {
-            return reponse(HttpStatus.BAD_REQUEST, "Bad Request",
-                "Un des champs saisis depasse la longueur maximale autorisee. "
-                + "Reduisez le texte et reessayez.");
+            return probleme(HttpStatus.BAD_REQUEST, "Requete invalide",
+                "Un des champs saisis depasse la longueur maximale autorisee. Reduisez le texte et reessayez.");
         }
 
-        // 6. Fallback : 409 Conflict avec un extrait pour le debug
-        String extrait = texte.length() > 200 ? texte.substring(0, 200) + "..." : texte;
-        return reponse(HttpStatus.CONFLICT, "Conflict", "Violation d'integrite: " + extrait);
+        // 6. Cas non prevu : detail technique uniquement dans les logs, identifiant de reference pour le support.
+        String reference = UUID.randomUUID().toString();
+        log.warn("Violation d'integrite non reconnue [ref={}] : {}", reference, texte);
+        ProblemDetail pd = probleme(HttpStatus.CONFLICT, "Conflit de donnees",
+            "L'operation viole une contrainte d'integrite des donnees.");
+        pd.setProperty("reference", reference);
+        return pd;
     }
 
-    private ResponseEntity<Map<String, Object>> reponse(HttpStatus statut, String erreur, String message) {
-        return ResponseEntity.status(statut).body(Map.of(
-            "status", statut.value(),
-            "error", erreur,
-            "message", message
-        ));
+    /** ProblemDetail standard ; "message" reprend "detail" pour les clients qui lisent error.message. */
+    private static ProblemDetail probleme(HttpStatus statut, String titre, String detail) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(statut, detail);
+        pd.setTitle(titre);
+        pd.setProperty("message", detail);
+        return pd;
     }
 }

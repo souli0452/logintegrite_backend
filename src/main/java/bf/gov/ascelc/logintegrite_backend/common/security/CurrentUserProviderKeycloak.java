@@ -2,18 +2,31 @@ package bf.gov.ascelc.logintegrite_backend.common.security;
 
 import bf.gov.ascelc.logintegrite_backend.securite.entity.Utilisateur;
 import bf.gov.ascelc.logintegrite_backend.securite.repository.UtilisateurRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
-@RequiredArgsConstructor
 public class CurrentUserProviderKeycloak implements CurrentUserProvider {
 
     private final UtilisateurRepository utilisateurRepository;
+    private final TransactionTemplate transactionEcriture;
+
+    public CurrentUserProviderKeycloak(UtilisateurRepository utilisateurRepository,
+                                       PlatformTransactionManager transactionManager) {
+        this.utilisateurRepository = utilisateurRepository;
+        // REQUIRES_NEW : transaction ecrivable independante, meme si l'appelant est en readOnly
+        // (un GET qui provisionne l'utilisateur ne doit pas echouer sur "cannot INSERT in
+        // read-only transaction"). TransactionTemplate et non @Transactional : l'auto-appel
+        // d'une methode annotee contourne le proxy Spring et l'annotation serait sans effet.
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.transactionEcriture = template;
+    }
 
     @Override
     public Utilisateur utilisateurCourant() {
@@ -21,15 +34,19 @@ public class CurrentUserProviderKeycloak implements CurrentUserProvider {
         String keycloakId = jwt.getSubject();
 
         return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseGet(() -> creerDepuisJwt(jwt, keycloakId));
+                .orElseGet(() -> provisionner(jwt, keycloakId));
     }
 
-    // REQUIRES_NEW : force une nouvelle transaction ecrivable, meme si la
-    // methode appelante est en readOnly. Sans ca, une lecture (GET) qui
-    // provoque le provisionnement JIT echouerait sur "cannot INSERT in
-    // read-only transaction".
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected Utilisateur creerDepuisJwt(Jwt jwt, String keycloakId) {
+    private Utilisateur provisionner(Jwt jwt, String keycloakId) {
+        try {
+            return transactionEcriture.execute(status -> creerDepuisJwt(jwt, keycloakId));
+        } catch (DataIntegrityViolationException e) {
+            // Requete concurrente : un autre thread a provisionne le meme utilisateur entre-temps.
+            return utilisateurRepository.findByKeycloakId(keycloakId).orElseThrow(() -> e);
+        }
+    }
+
+    private Utilisateur creerDepuisJwt(Jwt jwt, String keycloakId) {
         Utilisateur utilisateur = new Utilisateur();
         utilisateur.setKeycloakId(keycloakId);
         utilisateur.setNom(valeurOuDefaut(jwt.getClaimAsString("family_name"), "Inconnu"));

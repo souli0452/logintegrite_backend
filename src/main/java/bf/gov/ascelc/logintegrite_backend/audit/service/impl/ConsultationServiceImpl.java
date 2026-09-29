@@ -4,6 +4,7 @@ import bf.gov.ascelc.logintegrite_backend.audit.entity.JournalConsultation;
 import bf.gov.ascelc.logintegrite_backend.audit.event.ConsultationEvent;
 import bf.gov.ascelc.logintegrite_backend.audit.repository.JournalConsultationRepository;
 import bf.gov.ascelc.logintegrite_backend.audit.service.ConsultationService;
+import bf.gov.ascelc.logintegrite_backend.common.security.ClientIp;
 import bf.gov.ascelc.logintegrite_backend.common.security.CurrentUserProvider;
 import bf.gov.ascelc.logintegrite_backend.securite.entity.Utilisateur;
 import bf.gov.ascelc.logintegrite_backend.securite.repository.UtilisateurRepository;
@@ -51,6 +52,7 @@ public class ConsultationServiceImpl implements ConsultationService {
         consultation.setEntiteConsultee(evenement.entiteConsultee());
         consultation.setEntiteConsulteeId(evenement.entiteConsulteeId());
         consultation.setDateConsultation(Instant.now());
+        ClientIp.courante().ifPresent(consultation::setAdresseIp);
         repository.save(consultation);
     }
 }

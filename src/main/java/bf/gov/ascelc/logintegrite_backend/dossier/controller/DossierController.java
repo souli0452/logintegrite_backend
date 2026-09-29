@@ -37,6 +37,7 @@ public class DossierController {
     @ResponseStatus(HttpStatus.CREATED)
     public DossierResponse creer(@Valid @RequestBody DossierRequest request) { return service.creer(request); }
 
+    @PreAuthorize("hasAnyRole('AGENT','VALIDATEUR','ADMIN')")
     @PutMapping("/{id}")
     public DossierResponse modifier(@PathVariable UUID id, @Valid @RequestBody DossierRequest request) {
         return service.modifier(id, request);

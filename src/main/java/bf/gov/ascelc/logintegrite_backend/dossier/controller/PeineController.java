@@ -2,6 +2,7 @@
 package bf.gov.ascelc.logintegrite_backend.dossier.controller;
 
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.request.PeineRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.response.PeineResponse;
 import bf.gov.ascelc.logintegrite_backend.dossier.service.PeineService;
 import jakarta.validation.Valid;
@@ -24,6 +25,7 @@ public class PeineController {
         return service.listerParImplicationFait(implicationFaitId);
     }
 
+    @PreAuthorize("hasAnyRole('AGENT','VALIDATEUR','ADMIN')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PeineResponse creer(@PathVariable UUID implicationFaitId, @Valid @RequestBody PeineRequest request) {
