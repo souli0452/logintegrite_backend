@@ -40,12 +40,13 @@ services:
       - "${HTTPS_PORT:-443}:443"
     environment:
       DOMAIN: ${DOMAIN:?DOMAIN manquant}
-      TLS_MODE: ${TLS_MODE:?TLS_MODE manquant (internal ou e-mail Let's Encrypt)}
+      TLS_MODE: ${TLS_MODE:?TLS_MODE manquant (internal, e-mail Lets Encrypt, ou "/certs/fullchain.pem /certs/privkey.pem")}
       ADMIN_ALLOW: ${ADMIN_ALLOW:-private_ranges}
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      - ${CERTS_DIR:-./certs}:/certs:ro
     networks: [edge]
     depends_on: [frontend, backend, keycloak]
 

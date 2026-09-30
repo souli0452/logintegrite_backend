@@ -40,3 +40,8 @@ backend_dump*.txt
 frontend_specs_dump.txt
 
 .env.prod
+
+### Certificats TLS (jamais versionnes) ###
+certs/
+*.key
+*.pem

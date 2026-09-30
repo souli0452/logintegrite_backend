@@ -139,9 +139,19 @@
         <img class="asce-brand-logo" src="${url.resourcesPath}/img/logo.png" alt="" />
       </div>
       <div class="asce-brand-mid">
-        <span class="asce-brand-star"></span>
-        <p class="asce-brand-tagline">Base de données sécurisée des personnes épinglées pour corruption et malversations financières.</p>
-        <p class="asce-brand-features">Registre officiel&nbsp;&middot;&nbsp;Dossiers&nbsp;&middot;&nbsp;Validation&nbsp;&middot;&nbsp;Audit</p>
+        <h2 class="asce-brand-tagline">Le registre des personnes épinglées pour corruption et malversations financières</h2>
+        <div class="asce-fiches">
+          <div class="asce-fiche asce-fiche-3"></div>
+          <div class="asce-fiche asce-fiche-2"></div>
+          <div class="asce-fiche asce-fiche-1">
+            <p class="asce-fiche-ref">Fiche n° 2026-0148</p>
+            <span class="asce-masque asce-masque-nom"></span>
+            <p class="asce-fiche-ligne">Faits reprochés : détournement de fonds publics</p>
+            <span class="asce-masque asce-masque-court"></span>
+            <span class="asce-tampon">Validée</span>
+          </div>
+        </div>
+        <p class="asce-brand-note">Chaque consultation et chaque modification sont enregistrées dans un journal infalsifiable.</p>
       </div>
       <p class="asce-brand-copyright">&copy; 2026 ASCE-LC &mdash; Log Intégrité</p>
     </aside>

@@ -13,7 +13,16 @@ Seul Caddy publie des ports. La base n'est joignable que depuis le réseau Docke
 Le code de production se trouve sur la branche **`production`** des deux dépôts (`logintegrite_backend` et
 `logintegrite_frontend`). Sur le serveur : `git clone -b production <dépôt>` pour chacun, côte à côte.
 
-## 1. Secrets
+## 1. Certificat TLS et secrets
+**Certificat acheté (GoDaddy)** : copiez sur le serveur qui héberge la pile les trois fichiers (`.crt`, chaîne `gd_bundle-g2-g1.crt`, clé `.key`), puis :
+```bash
+scripts/preparer-certificat.sh asce-lc.bf.crt gd_bundle-g2-g1.crt asce-lc.bf.key     # crée certs/fullchain.pem et certs/privkey.pem
+scripts/generer-secrets.sh certificat                                                 # au lieu d'un e-mail Let's Encrypt
+```
+Le script vérifie que la clé correspond au certificat, que `logintegrite.asce-lc.bf` est couvert et que le certificat n'est pas expiré.
+**Attention** : un certificat émis pour `asce-lc.bf` seul ne couvre pas le sous-domaine ; il faut un certificat `*.asce-lc.bf` (joker) ou `logintegrite.asce-lc.bf`. Le dossier `certs/` n'est jamais versionné ; la clé n'a de sens que sur le serveur de production. Sans certificat acheté, utilisez `generer-secrets.sh <e-mail>` (Let's Encrypt).
+
+### Secrets
 ```bash
 scripts/generer-secrets.sh admin@asce-lc.bf            # e-mail Let's Encrypt ; domaine par défaut : logintegrite.asce-lc.bf
 ```

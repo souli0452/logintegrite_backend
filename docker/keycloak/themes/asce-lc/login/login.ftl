@@ -11,7 +11,6 @@
 <#assign asceResetEmailSent = message?? && message.type?? && message.type == "success">
 <@layout.registrationLayout displayMessage=!messagesPerField.existsError('username','password') && !asceResetEmailSent displayInfo=realm.password && realm.registrationAllowed && !registrationDisabled??; section>
 <!-- template: login.ftl -->
-<!-- DEBUG asceResetEmailSent=${asceResetEmailSent?c} message.exists=${(message??)?c} message.type=[${(message.type)!'N/A'}] message.summary=[${(message.summary)!'N/A'}] -->
 
     <#if section = "header">
         <#if asceResetEmailSent>${msg("emailForgotTitle")!"Vérifiez votre boîte mail"}<#else>${msg("loginAccountTitle")}</#if>

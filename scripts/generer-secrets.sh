@@ -6,12 +6,12 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-EMAIL="${1:?Usage : $0 <e-mail-letsencrypt> [domaine]}"
+EMAIL="${1:?Usage : $0 <e-mail-letsencrypt|certificat> [domaine]}"   # "certificat" : utilise certs/fullchain.pem (voir preparer-certificat.sh)
 DOMAINE="${2:-logintegrite.asce-lc.bf}"
 
 [ -e .env.prod ] && { echo ".env.prod existe deja : je ne l'ecrase pas (renommez-le ou supprimez-le d'abord)." >&2; exit 1; }
 command -v openssl >/dev/null || { echo "openssl est requis pour generer les secrets." >&2; exit 1; }
-[[ "$EMAIL" == *@*.* ]] || { echo "Adresse e-mail invalide : $EMAIL" >&2; exit 1; }
+[[ "$EMAIL" == "certificat" || "$EMAIL" == *@*.* ]] || { echo "Adresse e-mail invalide : $EMAIL (ou tapez : certificat)" >&2; exit 1; }
 
 secret() { openssl rand -hex 24; }   # hexadecimal : sans caractere special, sur pour SQL et YAML
 
@@ -21,7 +21,7 @@ compteur=0
 while IFS= read -r ligne || [ -n "$ligne" ]; do
     case "$ligne" in
         DOMAIN=*)    echo "DOMAIN=$DOMAINE" >> .env.prod ;;
-        TLS_MODE=*)  echo "TLS_MODE=$EMAIL" >> .env.prod ;;
+        TLS_MODE=*)  if [ "$EMAIL" = certificat ]; then echo "TLS_MODE=/certs/fullchain.pem /certs/privkey.pem" >> .env.prod; else echo "TLS_MODE=$EMAIL" >> .env.prod; fi ;;
         *=change-me) echo "${ligne%change-me}$(secret)" >> .env.prod; compteur=$((compteur + 1)) ;;
         *)           echo "$ligne" >> .env.prod ;;
     esac

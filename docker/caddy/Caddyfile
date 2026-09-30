@@ -4,7 +4,7 @@
 #   https://DOMAIN/auth/   Keycloak (connexion)
 #
 #   DOMAIN       nom de domaine unique, ex. logintegrite.asce-lc.bf
-#   TLS_MODE     "internal" (autorite locale Caddy, tests) ou une adresse e-mail (Let's Encrypt)
+#   TLS_MODE     "internal" (tests), une adresse e-mail (Let's Encrypt) ou "/certs/fullchain.pem /certs/privkey.pem" (certificat achete)
 #   ADMIN_ALLOW  "private_ranges" ou une liste de CIDR autorises pour la console Keycloak
 
 {$DOMAIN} {
