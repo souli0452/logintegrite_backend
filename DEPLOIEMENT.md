@@ -9,14 +9,18 @@ Seul Caddy publie des ports. La base n'est joignable que depuis le réseau Docke
   Tout passe par ce nom : `/` (application), `/api/` (API), `/auth/` (connexion Keycloak). Un seul certificat, pas de CORS.
 - Le dépôt frontend cloné à côté du backend (`../logintegrite_frontend`) ou `FRONTEND_CONTEXT` renseigné.
 
+## 0. Branche à déployer
+Le code de production se trouve sur la branche **`production`** des deux dépôts (`logintegrite_backend` et
+`logintegrite_frontend`). Sur le serveur : `git clone -b production <dépôt>` pour chacun, côte à côte.
+
 ## 1. Secrets
 ```bash
-cp .env.prod.example .env.prod
-# Remplacer TOUTES les valeurs "change-me" par des secrets distincts :  openssl rand -hex 24
-# Renseigner DOMAIN et TLS_MODE (adresse e-mail => certificats Let's Encrypt automatiques).
+scripts/generer-secrets.sh admin@asce-lc.bf            # e-mail Let's Encrypt ; domaine par défaut : logintegrite.asce-lc.bf
 ```
-`.env.prod` n'est jamais versionné. **Ne réutilisez aucun secret de développement** : les anciens mots de passe
-sont dans l'historique git du dépôt et doivent être considérés comme compromis.
+Le script crée `.env.prod` avec 7 secrets aléatoires distincts (jamais affichés) et refuse d'écraser un fichier existant.
+**Sauvegardez `.env.prod` dans un coffre ou un gestionnaire de mots de passe** : le perdre, c'est perdre l'accès à la base
+et à Keycloak. `.env.prod` n'est jamais versionné. **Ne réutilisez aucun secret de développement** : les anciens mots de
+passe sont dans l'historique git du dépôt et doivent être considérés comme compromis.
 
 ## 2. Démarrage
 ```bash
