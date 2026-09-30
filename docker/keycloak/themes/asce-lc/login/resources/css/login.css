@@ -3,15 +3,15 @@
    ============================================================ */
 
 :root {
-  --green:    #009640;
-  --g-mid:    #008539;
-  --g-dark:   #006e2f;
-  --g-darker: #003416;
-  --g-darkest:#001d0c;
+  --green:    #257F3E;
+  --g-mid:    #1F6E35;
+  --g-dark:   #19592B;
+  --g-darker: #0F2E1A;
+  --g-darkest:#0A2012;
   --gold:   #f2c14e;
   --white:  #ffffff;
   --bg:     #f3f5f4;
-  --panel:  #0b3d2e;
+  --panel:  #0F2E1A;
   --ink:    #14201b;
   --stamp:  #b4232a;
   --serif:  'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
@@ -103,7 +103,7 @@ select[name="locale"] {
   position: absolute;
   inset: 0 0 auto 0;
   height: 4px;
-  background: linear-gradient(90deg, #E30613 0 33.3%, #FFDD00 33.3% 66.6%, #009640 66.6%);
+  background: linear-gradient(90deg, #EE1D23 0 33.3%, #FFDC01 33.3% 66.6%, #00A54F 66.6%);
 }
 
 .asce-brand-top,
@@ -223,7 +223,7 @@ select[name="locale"] {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(0, 150, 64, 0.1);
+  background: rgba(72, 186, 101, 0.1);
   color: var(--green);
   font-size: 24px;
   display: flex;
@@ -322,7 +322,7 @@ input#password:focus,
 input.pf-v5-c-form-control:focus {
   background: var(--white) !important;
   border-color: var(--green) !important;
-  box-shadow: 0 0 0 3px rgba(0,150,64,.15) !important;
+  box-shadow: 0 0 0 3px rgba(72, 186, 101, .15) !important;
   outline: none !important;
 }
 
@@ -335,7 +335,7 @@ input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
   border-color: var(--green) !important;
   -webkit-text-fill-color: var(--text) !important;
-  box-shadow: 0 0 0 1000px #f8fafc inset, 0 0 0 3px rgba(0,150,64,.15) !important;
+  box-shadow: 0 0 0 1000px #f8fafc inset, 0 0 0 3px rgba(72, 186, 101, .15) !important;
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
@@ -355,7 +355,7 @@ input:-webkit-autofill:active {
   border-radius: 8px !important;
   cursor: pointer !important;
 }
-.pf-v5-c-button.pf-m-control:focus { outline: none !important; box-shadow: 0 0 0 3px rgba(0,150,64,.15) !important; }
+.pf-v5-c-button.pf-m-control:focus { outline: none !important; box-shadow: 0 0 0 3px rgba(72, 186, 101, .15) !important; }
 .pf-v5-c-button.pf-m-control:hover { background: #f1f5f9 !important; color: var(--muted) !important; }
 
 /* ── Options (case à cocher + mot de passe oublié) ──
@@ -392,7 +392,7 @@ input[type="radio"] {
   color: var(--white) !important;
   cursor: pointer !important;
   letter-spacing: .3px !important;
-  box-shadow: 0 4px 18px rgba(0,150,64,.28) !important;
+  box-shadow: 0 4px 18px rgba(72, 186, 101, .28) !important;
   transition: background .18s, transform .14s, box-shadow .18s !important;
 }
 #kc-login::before {
@@ -403,7 +403,7 @@ input[type="radio"] {
 }
 #kc-login:hover {
   background: var(--g-mid) !important;
-  box-shadow: 0 6px 24px rgba(0,150,64,.40) !important;
+  box-shadow: 0 6px 24px rgba(72, 186, 101, .40) !important;
   transform: translateY(-1px) !important;
 }
 #kc-login:active { background: var(--g-dark) !important; transform: translateY(0) !important; }
