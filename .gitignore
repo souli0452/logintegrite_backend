@@ -45,3 +45,10 @@ frontend_specs_dump.txt
 certs/
 *.key
 *.pem
+
+### Sauvegardes et essais (jamais versionnes) ###
+/SHA256SUMS-*
+/*.dump
+/*.dump.enc
+/documents-*.tar.gz*
+*.phrase
