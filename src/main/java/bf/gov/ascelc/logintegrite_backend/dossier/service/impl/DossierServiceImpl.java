@@ -6,7 +6,9 @@ import bf.gov.ascelc.logintegrite_backend.audit.service.ConsultationService;
 import bf.gov.ascelc.logintegrite_backend.common.exception.ResourceNotFoundException;
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.request.DossierRequest;
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.response.DossierResponse;
+import bf.gov.ascelc.logintegrite_backend.common.util.RechercheTexte;
 import bf.gov.ascelc.logintegrite_backend.dossier.entity.Dossier;
+import bf.gov.ascelc.logintegrite_backend.dossier.enums.StatutDossier;
 import bf.gov.ascelc.logintegrite_backend.dossier.mapper.DossierMapper;
 import bf.gov.ascelc.logintegrite_backend.dossier.repository.DossierRepository;
 import bf.gov.ascelc.logintegrite_backend.dossier.service.DossierService;
@@ -33,8 +35,9 @@ public class DossierServiceImpl implements DossierService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<DossierResponse> lister(Pageable pageable) {
-        return repository.findAll(pageable).map(mapper::toResponse);
+    public Page<DossierResponse> lister(String recherche, StatutDossier statut, Pageable pageable) {
+        return repository.rechercher(RechercheTexte.echapperLike(recherche), statut == null ? "" : statut.name(), pageable)
+                .map(mapper::toResponse);
     }
 
     @Override

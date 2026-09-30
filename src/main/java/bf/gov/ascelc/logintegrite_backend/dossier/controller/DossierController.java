@@ -5,6 +5,7 @@ import bf.gov.ascelc.logintegrite_backend.dossier.dto.request.DossierRequest;
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.request.OuvrirDossierRequest;
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.response.DossierResponse;
 import bf.gov.ascelc.logintegrite_backend.dossier.dto.response.OuvrirDossierResponse;
+import bf.gov.ascelc.logintegrite_backend.dossier.enums.StatutDossier;
 import bf.gov.ascelc.logintegrite_backend.dossier.service.DossierService;
 import bf.gov.ascelc.logintegrite_backend.dossier.service.DossierWorkflowService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +30,13 @@ public class DossierController {
     private final DossierWorkflowService workflowService;
 
     @GetMapping
-    public Page<DossierResponse> lister(Pageable pageable) { return service.lister(pageable); }
+    /** Liste paginee, du plus recent au plus ancien ; `q` cherche dans le numero et l'intitule, `statut` filtre. */
+    public Page<DossierResponse> lister(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) StatutDossier statut,
+            @PageableDefault(size = 20, sort = "dateOuverture", direction = Sort.Direction.DESC) Pageable pageable) {
+        return service.lister(q, statut, pageable);
+    }
 
     @GetMapping("/{id}")
     public DossierResponse obtenir(@PathVariable UUID id) { return service.obtenir(id); }
