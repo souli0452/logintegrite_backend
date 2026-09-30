@@ -34,7 +34,7 @@ build/
 
 ### Secrets et donnees d'execution (ne jamais versionner) ###
 .env
-storage/
+/storage/
 uploads/
 backend_dump*.txt
 frontend_specs_dump.txt
