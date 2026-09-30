@@ -29,12 +29,13 @@ class CurrentUserProviderKeycloakTest {
 
     private final UtilisateurRepository repository = mock(UtilisateurRepository.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    private final SynchroniseurRoles synchroniseurRoles = mock(SynchroniseurRoles.class);
     private CurrentUserProviderKeycloak provider;
 
     @BeforeEach
     void init() {
         when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
-        provider = new CurrentUserProviderKeycloak(repository, transactionManager);
+        provider = new CurrentUserProviderKeycloak(repository, transactionManager, synchroniseurRoles);
         Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").subject("kc-42")
                 .claim("given_name", "Awa").claim("family_name", "Ouedraogo").claim("email", "awa@asce-lc.bf")
                 .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).build();
@@ -53,6 +54,7 @@ class CurrentUserProviderKeycloakTest {
 
         assertThat(provider.utilisateurCourant()).isSameAs(existant);
         verifyNoInteractions(transactionManager);
+        verify(synchroniseurRoles).synchroniser(any(Utilisateur.class), any(Jwt.class));
         verify(repository, never()).save(any());
     }
 

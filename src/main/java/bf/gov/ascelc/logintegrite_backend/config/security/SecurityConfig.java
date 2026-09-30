@@ -1,5 +1,7 @@
 package bf.gov.ascelc.logintegrite_backend.config.security;
 
+import bf.gov.ascelc.logintegrite_backend.common.security.CurrentUserProvider;
+import bf.gov.ascelc.logintegrite_backend.common.security.SynchroniseurRoles;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +13,7 @@ import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -51,7 +54,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, CurrentUserProvider currentUserProvider,
+                                           SynchroniseurRoles synchroniseurRoles) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable()) // API stateless, jeton Bearer, pas de cookie de session
@@ -65,7 +69,10 @@ public class SecurityConfig {
             })
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
-            );
+            )
+            // Provisionne le compte local et reporte ses roles des la premiere requete (une fois par utilisateur).
+            .addFilterAfter(new SynchronisationUtilisateurFilter(currentUserProvider, synchroniseurRoles),
+                    BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 

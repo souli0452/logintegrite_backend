@@ -15,10 +15,13 @@ public class CurrentUserProviderKeycloak implements CurrentUserProvider {
 
     private final UtilisateurRepository utilisateurRepository;
     private final TransactionTemplate transactionEcriture;
+    private final SynchroniseurRoles synchroniseurRoles;
 
     public CurrentUserProviderKeycloak(UtilisateurRepository utilisateurRepository,
-                                       PlatformTransactionManager transactionManager) {
+                                       PlatformTransactionManager transactionManager,
+                                       SynchroniseurRoles synchroniseurRoles) {
         this.utilisateurRepository = utilisateurRepository;
+        this.synchroniseurRoles = synchroniseurRoles;
         // REQUIRES_NEW : transaction ecrivable independante, meme si l'appelant est en readOnly
         // (un GET qui provisionne l'utilisateur ne doit pas echouer sur "cannot INSERT in
         // read-only transaction"). TransactionTemplate et non @Transactional : l'auto-appel
@@ -33,8 +36,10 @@ public class CurrentUserProviderKeycloak implements CurrentUserProvider {
         Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String keycloakId = jwt.getSubject();
 
-        return utilisateurRepository.findByKeycloakId(keycloakId)
+        Utilisateur utilisateur = utilisateurRepository.findByKeycloakId(keycloakId)
                 .orElseGet(() -> provisionner(jwt, keycloakId));
+        synchroniseurRoles.synchroniser(utilisateur, jwt);
+        return utilisateur;
     }
 
     private Utilisateur provisionner(Jwt jwt, String keycloakId) {
