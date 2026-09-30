@@ -77,7 +77,6 @@ public class DossierWorkflowServiceImpl implements DossierWorkflowService {
         Personne personne = resoudrePersonne(request);
 
         Dossier dossier = new Dossier();
-        dossier.setNumeroDossier(request.getDossier().getNumeroDossier());
         dossier.setIntitule(request.getDossier().getIntitule());
         dossier.setDescriptionContexte(request.getDossier().getDescriptionContexte());
         dossier.setSourceSignalement(sourceSignalementRepository.findById(request.getDossier().getSourceSignalementId())
@@ -86,11 +85,6 @@ public class DossierWorkflowServiceImpl implements DossierWorkflowService {
         
         Dossier dossierSauvegarde = dossierRepository.save(dossier);
         
-        // PATCH 2 : Auto-génération du numéro si absent ou vide
-        if (dossierSauvegarde.getNumeroDossier() == null || dossierSauvegarde.getNumeroDossier().isBlank()) {
-            dossierSauvegarde.setNumeroDossier(genererNumeroDossier(dossierSauvegarde.getId()));
-        }
-
         Implication implication = new Implication();
         implication.setPersonne(personne);
         implication.setDossier(dossierSauvegarde);
@@ -139,7 +133,6 @@ public class DossierWorkflowServiceImpl implements DossierWorkflowService {
 
         // 2. Creer le dossier
         Dossier dossier = new Dossier();
-        dossier.setNumeroDossier(request.getDossier().getNumeroDossier());
         dossier.setIntitule(request.getDossier().getIntitule());
         dossier.setDescriptionContexte(request.getDossier().getDescriptionContexte());
         dossier.setSourceSignalement(sourceSignalementRepository.findById(request.getDossier().getSourceSignalementId())
@@ -147,11 +140,6 @@ public class DossierWorkflowServiceImpl implements DossierWorkflowService {
                         request.getDossier().getSourceSignalementId())));
         
         Dossier dossierSauvegarde = dossierRepository.save(dossier);
-
-        // PATCH 2 : Auto-génération du numéro si absent ou vide
-        if (dossierSauvegarde.getNumeroDossier() == null || dossierSauvegarde.getNumeroDossier().isBlank()) {
-            dossierSauvegarde.setNumeroDossier(genererNumeroDossier(dossierSauvegarde.getId()));
-        }
 
         // 3. Creer l'implication
         Implication implication = new Implication();
@@ -251,16 +239,6 @@ public class DossierWorkflowServiceImpl implements DossierWorkflowService {
     // ====================================================================================
     // METHODES UTILITAIRES
     // ====================================================================================
-
-    /**
-     * Génère un numéro de dossier au format DOSS-YYYY-XXXXXXXX
-     * basés sur l'année courante et les 8 premiers caractères de l'UUID du dossier.
-     */
-    private String genererNumeroDossier(UUID dossierId) {
-        return String.format("DOSS-%d-%s",
-                LocalDate.now().getYear(),
-                dossierId.toString().substring(0, 8).toUpperCase());
-    }
 
     /**
      * Choisit le statut judiciaire initial à porter par un ImplicationFait :

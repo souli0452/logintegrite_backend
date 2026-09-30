@@ -8,7 +8,9 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.generator.EventType;
 import org.hibernate.type.SqlTypes;
 
 import java.lang.reflect.Field;
@@ -27,6 +29,11 @@ public abstract class Personne extends VersionedAuditEntity {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "type_personne", columnDefinition = "core.type_personne", nullable = false, updatable = false)
     private TypePersonne typePersonne;
+
+    /** Reference officielle (PERS-2026-00001, ORG-2026-00001) attribuee par la base a la creation : jamais saisie. */
+    @Generated(event = EventType.INSERT)
+    @Column(name = "numero_personne", insertable = false, updatable = false, nullable = false)
+    private String numeroPersonne;
 
     @Setter(AccessLevel.NONE)
     @Column(name = "nom_affichage", nullable = false)

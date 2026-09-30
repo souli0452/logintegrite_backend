@@ -203,6 +203,7 @@ public List<Map<String, Object>> historiqueStatutsJudiciaires(UUID personneId) {
 
         return PersonneResumeResponse.builder()
             .id(p.getId())
+            .numeroPersonne(p.getNumeroPersonne())
             .typePersonne(p.getTypePersonne())
             .nomAffichage(p.getNomAffichage())
             .statutAncrage(statut)

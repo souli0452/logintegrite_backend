@@ -15,6 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PersonneMoraleResponse {
     private UUID id;
+    private String numeroPersonne;
     private String nomAffichage;
     private String denominationSociale;
     private String sigle;

@@ -113,6 +113,7 @@ Les sauvegardes contiennent des données personnelles : elles ne quittent jamais
 | Transport | HTTPS partout, HSTS, redirections automatiques |
 | Base de données | 4 rôles à moindre privilège ; l'application ne peut ni modifier le schéma, ni désactiver les triggers, ni modifier ou supprimer l'audit et les documents |
 | Audit | chaîne de hachage SHA-256 et immuabilité par triggers, plus refus SQL au rôle applicatif |
+| Numérotation | références officielles attribuées par la base (`PERS-2026-00001`, `ORG-…`, `DOSS-…`) : sans doublon ni trou, impossibles à imposer par le client ; le compteur est inaccessible au rôle applicatif (migration V7) |
 | Jetons | signature, émetteur **et audience** (`logintegrite-api`) vérifiés |
 | Keycloak | mode production, mots de passe forts, blocage après 5 échecs, console restreinte par réseau |
 | Conteneurs | `no-new-privileges`, capacités retirées pour le backend, journaux avec rotation |

@@ -15,6 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PersonnePhysiqueResponse {
     private UUID id;
+    private String numeroPersonne;
     private String nomAffichage;
     private String nomNaissance;
     private String nomUsage;

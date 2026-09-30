@@ -12,7 +12,6 @@ import java.util.UUID;
 @Setter
 public class DossierRequest {
 
-    private String numeroDossier;
     private String intitule;
 
     @NotNull(message = "La source de signalement est obligatoire")

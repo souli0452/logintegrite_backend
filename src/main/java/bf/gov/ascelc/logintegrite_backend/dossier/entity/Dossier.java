@@ -5,9 +5,12 @@ import bf.gov.ascelc.logintegrite_backend.common.entity.VersionedAuditEntity;
 import bf.gov.ascelc.logintegrite_backend.dossier.enums.StatutDossier;
 import bf.gov.ascelc.logintegrite_backend.referentiel.entity.SourceSignalement;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.generator.EventType;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
@@ -22,7 +25,10 @@ import java.time.LocalDate;
 @Setter
 public class Dossier extends VersionedAuditEntity {
 
-    @Column(name = "numero_dossier")
+    /** Numero officiel (DOSS-2026-00001) attribue par la base a la creation : jamais saisi ni modifiable. */
+    @Setter(AccessLevel.NONE)
+    @Generated(event = EventType.INSERT)
+    @Column(name = "numero_dossier", insertable = false, updatable = false, nullable = false)
     private String numeroDossier;
 
     @Column(name = "intitule")

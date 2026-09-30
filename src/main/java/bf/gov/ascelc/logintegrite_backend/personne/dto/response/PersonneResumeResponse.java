@@ -14,6 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PersonneResumeResponse {
     private UUID id;
+    private String numeroPersonne;
     private TypePersonne typePersonne;
     private String nomAffichage;
     private StatutAncrage statutAncrage;

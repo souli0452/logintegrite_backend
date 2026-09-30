@@ -10,6 +10,7 @@ import bf.gov.ascelc.logintegrite_backend.personne.entity.PersonnePhysique;
 import bf.gov.ascelc.logintegrite_backend.personne.entity.PieceIdentite;
 import bf.gov.ascelc.logintegrite_backend.personne.enums.TypePersonne;
 import jakarta.persistence.criteria.Join;
+import bf.gov.ascelc.logintegrite_backend.common.util.RechercheTexte;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -26,7 +27,10 @@ public final class PersonneSpecifications {
     public static Specification<Personne> nomAffichageContient(String texte) {
         return (root, query, cb) -> {
             if (texte == null || texte.isBlank()) return cb.conjunction();
-            return cb.like(cb.lower(root.get("nomAffichage")), "%" + texte.toLowerCase() + "%");
+            String motif = "%" + RechercheTexte.echapperLike(texte).toLowerCase() + "%";
+            return cb.or(
+                    cb.like(cb.lower(root.get("nomAffichage")), motif, '\\'),
+                    cb.like(cb.lower(root.get("numeroPersonne")), motif, '\\'));
         };
     }
 
