@@ -71,6 +71,42 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod exec backup /rest
 ```
 Les empreintes sont vérifiées avant restauration. Testez la restauration régulièrement.
 
+### Copie hors serveur (chiffrée)
+`scripts/copier-sauvegardes.sh` prend le **dernier** jeu, vérifie ses empreintes (une sauvegarde altérée n'est jamais
+envoyée), le chiffre en AES-256, le copie vers une autre machine et purge les jeux anciens de la destination.
+Les sauvegardes contiennent des données personnelles : elles ne quittent jamais le serveur en clair.
+
+1. **Phrase secrète** (à conserver aussi HORS du serveur, par exemple dans un gestionnaire de mots de passe : sans elle,
+   les copies sont inutilisables) :
+   ```bash
+   openssl rand -base64 32 > ~/sauvegarde.phrase && chmod 600 ~/sauvegarde.phrase
+   ```
+2. **Clé SSH dédiée** vers la machine de destination (sans mot de passe, réservée à cet usage) :
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/id_sauvegarde -N ''
+   ssh-copy-id -i ~/.ssh/id_sauvegarde.pub utilisateur@destination
+   ```
+3. **Réglages** à ajouter dans `.env.prod` :
+   ```
+   SAUVEGARDE_DEST=utilisateur@destination:/srv/sauvegardes/logintegrite/
+   SAUVEGARDE_PASSPHRASE=/home/administrator/sauvegarde.phrase
+   SAUVEGARDE_SSH_OPTIONS=-i /home/administrator/.ssh/id_sauvegarde
+   SAUVEGARDE_CONSERVER=14
+   ```
+4. **Essai manuel**, puis planification quotidienne (après la sauvegarde du service, par exemple à 3 h) :
+   ```bash
+   scripts/copier-sauvegardes.sh
+   ( crontab -l 2>/dev/null; echo '0 3 * * * cd /home/administrator/logintegrite_backend && scripts/copier-sauvegardes.sh >> /home/administrator/copie-sauvegardes.log 2>&1' ) | crontab -
+   ```
+5. **Restauration d'une copie** (sur la machine de votre choix) :
+   ```bash
+   openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass file:sauvegarde.phrase \
+       -in logintegrite_db-<horodatage>.dump.enc -out logintegrite_db-<horodatage>.dump
+   sha256sum -c SHA256SUMS-<horodatage>      # après avoir déchiffré aussi le fichier SHA256SUMS-<horodatage>.enc
+   ```
+   Puis `restore.sh` (voir ci-dessus). **Un test de restauration complet au moins une fois est indispensable** : une sauvegarde
+   jamais restaurée n'est pas une sauvegarde.
+
 ## 6. Ce que garantit cette configuration
 | Sujet | Mesure |
 |---|---|
