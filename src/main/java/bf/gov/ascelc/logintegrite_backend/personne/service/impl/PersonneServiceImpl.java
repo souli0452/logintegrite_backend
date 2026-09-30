@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,7 +53,9 @@ public class PersonneServiceImpl implements PersonneService {
         // 2. Sinon : on charge TOUTES les personnes matching, on calcule le statut d'ancrage, on filtre, puis on pagine en Java.
         //    Acceptable à l'échelle actuelle (quelques milliers de personnes max).
         //    TODO: Si la volumétrie dépasse ~10k personnes, remplacer par une subquery SQL sur le count de dossiers validés.
-        List<Personne> toutes = repository.findAll(PersonneSpecifications.depuisCriteres(criteria));
+        // Meme ordre que le chemin nominal : les plus recentes d'abord (le tri demande par le client est ignore ici).
+        List<Personne> toutes = repository.findAll(PersonneSpecifications.depuisCriteres(criteria),
+                Sort.by(Sort.Direction.DESC, "dateCreation", "id"));
         List<UUID> ids = toutes.stream().map(Personne::getId).toList();
         Map<UUID, Integer> compteurs = calculerNombreDossiersValidesParPersonne(ids);
 

@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,7 +31,7 @@ public class PersonneController {
     @GetMapping("/recherche")
     public Page<PersonneResumeResponse> rechercher(
             @ModelAttribute PersonneSearchCriteria criteria,
-            Pageable pageable) {
+            @PageableDefault(size = 20, sort = {"dateCreation", "id"}, direction = Sort.Direction.DESC) Pageable pageable) {
         return service.rechercher(criteria, pageable);
     }
 
@@ -56,7 +58,7 @@ public class PersonneController {
             @RequestParam(defaultValue = "20") int size) {
         PersonneSearchCriteria criteria = new PersonneSearchCriteria();
         criteria.setStatutAncrage(StatutAncrage.EN_INSTRUCTION);
-        return service.rechercher(criteria, PageRequest.of(page, size));
+        return service.rechercher(criteria, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "dateCreation", "id")));
     }
 
     @Operation(summary = "Personnes du registre officiel",
@@ -67,6 +69,6 @@ public class PersonneController {
             @RequestParam(defaultValue = "20") int size) {
         PersonneSearchCriteria criteria = new PersonneSearchCriteria();
         criteria.setStatutAncrage(StatutAncrage.REGISTRE_OFFICIEL);
-        return service.rechercher(criteria, PageRequest.of(page, size));
+        return service.rechercher(criteria, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "dateCreation", "id")));
     }
 }
