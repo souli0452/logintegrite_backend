@@ -10,7 +10,7 @@
   "sslRequired": "none",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
-  "resetPasswordAllowed": true,
+  "resetPasswordAllowed": false,
   "bruteForceProtected": true,
   "accessTokenLifespan": 900,
   "defaultRole": {

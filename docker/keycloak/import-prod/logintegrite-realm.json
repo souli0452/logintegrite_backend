@@ -10,7 +10,7 @@
   "sslRequired": "all",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
-  "resetPasswordAllowed": true,
+  "resetPasswordAllowed": false,
   "bruteForceProtected": true,
   "failureFactor": 5,
   "maxFailureWaitSeconds": 900,

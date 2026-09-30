@@ -123,3 +123,6 @@ Les sauvegardes contiennent des données personnelles : elles ne quittent jamais
 - Bascule de `Content-Security-Policy-Report-Only` vers `Content-Security-Policy` après observation (Caddyfile).
 - Rotation périodique des secrets ; `KEYCLOAK_ADMIN_CLIENT_SECRET` doit rester identique dans Keycloak et le backend.
 - Mises à jour régulières des images (Keycloak, Postgres, Caddy, JRE, nginx).
+
+## 3 bis. Mot de passe oublie
+Le lien "Mot de passe oublie ?" est retire (`resetPasswordAllowed=false`) tant qu aucun serveur de messagerie (SMTP) n est configure dans Keycloak : sans lui, aucun e-mail ne partirait. Un administrateur reinitialise un mot de passe en recreant le compte avec `scripts/keycloak-users.sh`. Pour reactiver le lien : configurer le SMTP (console Keycloak, realm logintegrite, Realm settings, Email) puis `resetPasswordAllowed=true`.
