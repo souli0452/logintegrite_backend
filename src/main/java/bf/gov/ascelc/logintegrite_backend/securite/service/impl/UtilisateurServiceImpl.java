@@ -121,8 +121,11 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         // Suppression des liens de roles
         utilisateurRoleRepository.deleteAll(utilisateurRoleRepository.findByUtilisateurId(id));
 
-        // Suppression en base
+        // Suppression en base, forcee MAINTENANT : un utilisateur qui a un historique (audit, consultations) ne peut pas
+        // etre supprime, et ce refus doit survenir AVANT la suppression dans Keycloak. Sinon le compte serait detruit
+        // dans Keycloak alors qu'il reste en base (impossible de se connecter, mais toujours liste).
         utilisateurRepository.delete(utilisateur);
+        utilisateurRepository.flush();
 
         // Suppression Keycloak (non bloquant)
         keycloakAdmin.supprimerUtilisateur(keycloakId);
