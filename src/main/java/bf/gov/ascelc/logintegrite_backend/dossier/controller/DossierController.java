@@ -34,7 +34,7 @@ public class DossierController {
     public Page<DossierResponse> lister(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) StatutDossier statut,
-            @PageableDefault(size = 20, sort = "dateOuverture", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = {"dateOuverture", "dateCreation", "id"}, direction = Sort.Direction.DESC) Pageable pageable) {
         return service.lister(q, statut, pageable);
     }
 
