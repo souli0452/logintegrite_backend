@@ -225,4 +225,28 @@ public class KeycloakAdminService {
             log.warn("Impossible de supprimer {} de Keycloak : {}", keycloakId, e.getMessage());
         }
     }
+
+    // ==================== EVENEMENTS D'AUTHENTIFICATION ====================
+    /**
+     * Evenements d'authentification releves par Keycloak (connexions, deconnexions, echecs), du plus recent au plus ancien.
+     * Source de verite : ils sont ecrits par Keycloak lui-meme, hors de portee de l'application.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> listerEvenements(String type, int premier, int max) {
+        List<String> types = (type == null || type.isBlank())
+                ? List.of("LOGIN", "LOGOUT", "LOGIN_ERROR") : List.of(type);
+        try {
+            return adminClient.get()
+                    .uri(uri -> {
+                        var b = uri.path("/events");
+                        types.forEach(t -> b.queryParam("type", t));
+                        return b.queryParam("first", premier).queryParam("max", max).build();
+                    })
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + getAdminToken())
+                    .retrieve()
+                    .body(List.class);
+        } catch (RestClientResponseException e) {
+            throw new IllegalStateException("Lecture des evenements Keycloak impossible (HTTP " + e.getStatusCode() + ")", e);
+        }
+    }
 }

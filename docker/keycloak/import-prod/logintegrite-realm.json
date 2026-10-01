@@ -20,7 +20,7 @@
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "eventsEnabled": true,
-  "eventsExpiration": 7776000,
+  "eventsExpiration": 63072000,
   "adminEventsEnabled": true,
   "adminEventsDetailsEnabled": false,
   "defaultRole": {
@@ -86,7 +86,7 @@
       "username": "service-account-logintegrite-admin-api",
       "enabled": true,
       "serviceAccountClientId": "logintegrite-admin-api",
-      "clientRoles": { "realm-management": ["view-users", "query-users", "manage-users", "view-realm"] }
+      "clientRoles": { "realm-management": ["view-users", "query-users", "manage-users", "view-realm", "view-events"] }
     }
   ]
 }

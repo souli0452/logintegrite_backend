@@ -12,6 +12,9 @@
   "loginWithEmailAllowed": true,
   "resetPasswordAllowed": false,
   "bruteForceProtected": true,
+  "eventsEnabled": true,
+  "eventsExpiration": 63072000,
+  "enabledEventTypes": ["LOGIN", "LOGOUT", "LOGIN_ERROR"],
   "accessTokenLifespan": 900,
   "defaultRole": {
     "name": "default-roles-logintegrite",
@@ -75,7 +78,7 @@
       "username": "service-account-logintegrite-admin-api",
       "enabled": true,
       "serviceAccountClientId": "logintegrite-admin-api",
-      "clientRoles": { "realm-management": ["view-users", "query-users", "manage-users", "view-realm"] }
+      "clientRoles": { "realm-management": ["view-users", "query-users", "manage-users", "view-realm", "view-events"] }
     },
     {
       "username": "admin.test", "email": "admin.test@asce-lc.bf", "firstName": "Admin", "lastName": "Test",

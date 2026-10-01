@@ -127,3 +127,28 @@ Les sauvegardes contiennent des données personnelles : elles ne quittent jamais
 
 ## 3 bis. Mot de passe oublie
 Le lien "Mot de passe oublie ?" est retire (`resetPasswordAllowed=false`) tant qu aucun serveur de messagerie (SMTP) n est configure dans Keycloak : sans lui, aucun e-mail ne partirait. Un administrateur reinitialise un mot de passe en recreant le compte avec `scripts/keycloak-users.sh`. Pour reactiver le lien : configurer le SMTP (console Keycloak, realm logintegrite, Realm settings, Email) puis `resetPasswordAllowed=true`.
+
+## Journal des connexions et des événements du poste (à faire une fois en production)
+
+L'écran « Audit des actions » lit les connexions, déconnexions et échecs de connexion dans Keycloak. Le compte technique
+de l'application a besoin du droit de lecture des événements, et la durée de conservation doit couvrir les besoins d'enquête
+(2 ans ici). Sur un Keycloak déjà installé, le fichier d'import n'est pas rejoué : appliquer ces deux commandes.
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T keycloak sh -c '
+/opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080/auth --realm master \
+  --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" &&
+/opt/keycloak/bin/kcadm.sh add-roles -r logintegrite --uusername service-account-logintegrite-admin-api \
+  --cclientid realm-management --rolename view-events &&
+/opt/keycloak/bin/kcadm.sh update events/config -r logintegrite -s eventsEnabled=true -s eventsExpiration=63072000 \
+  -s "enabledEventTypes=[\"LOGIN\",\"LOGOUT\",\"LOGIN_ERROR\"]" &&
+echo OK'
+```
+
+Les événements du poste (tentatives de copie, d'impression, de capture) sont écrits dans `audit.journal_securite` (migration V8),
+table en ajout seulement : ni modification ni suppression, même par l'application.
+
+Limites à connaître : un navigateur ne peut pas empêcher une capture d'écran ni une photo de l'écran. Le dispositif repose
+sur la dissuasion (filigrane au nom de l'utilisateur, masque quand la fenêtre perd le focus, copie et impression bloquées)
+et sur la traçabilité (journal des tentatives). Un blocage réel des captures sur téléphone demande une application native
+ou la gestion des appareils de l'organisation.
