@@ -55,7 +55,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, CurrentUserProvider currentUserProvider,
-                                           SynchroniseurRoles synchroniseurRoles) throws Exception {
+                                           SynchroniseurRoles synchroniseurRoles,
+                                           bf.gov.ascelc.logintegrite_backend.securite.service.ControleExpirationCompte controleExpiration) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable()) // API stateless, jeton Bearer, pas de cookie de session
@@ -74,7 +75,9 @@ public class SecurityConfig {
             .addFilterAfter(new SynchronisationUtilisateurFilter(currentUserProvider, synchroniseurRoles),
                     BearerTokenAuthenticationFilter.class)
             // Compte de consultation seule : liste blanche d'appels (voir AccesConsultantFilter).
-            .addFilterAfter(new AccesConsultantFilter(), SynchronisationUtilisateurFilter.class);
+            .addFilterAfter(new AccesConsultantFilter(), SynchronisationUtilisateurFilter.class)
+            // Compte expire : refuse des la requete suivante, sans attendre la fin du jeton.
+            .addFilterAfter(new ExpirationCompteFilter(controleExpiration), AccesConsultantFilter.class);
         return http.build();
     }
 

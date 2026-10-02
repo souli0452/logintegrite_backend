@@ -36,6 +36,10 @@ public class Utilisateur extends IdentifiableEntity {
     @Column(name = "actif", nullable = false)
     private boolean actif = true;
 
+    /** Au-dela de cette date (exclue), le compte est refuse puis desactive. Null : pas d'expiration. */
+    @Column(name = "date_expiration")
+    private java.time.LocalDate dateExpiration;
+
     @Column(name = "date_creation", insertable = false, updatable = false)
     private Instant dateCreation;
 

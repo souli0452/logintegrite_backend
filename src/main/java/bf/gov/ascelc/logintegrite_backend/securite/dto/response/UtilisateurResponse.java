@@ -17,5 +17,6 @@ public class UtilisateurResponse {
     private String prenom;
     private String email;
     private boolean actif;
+    private java.time.LocalDate dateExpiration;
     private List<RoleHabilitationResponse> roles;
 }

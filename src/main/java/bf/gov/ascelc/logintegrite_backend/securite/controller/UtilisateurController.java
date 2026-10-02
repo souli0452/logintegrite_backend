@@ -46,6 +46,14 @@ public class UtilisateurController {
         return service.modifierActivation(id, actif);
     }
 
+    /** Fixe, prolonge ou retire (null) la date d'expiration du compte. */
+    @PatchMapping("/{id}/expiration")
+    public UtilisateurResponse modifierExpiration(@PathVariable UUID id, @RequestBody ExpirationRequest body) {
+        return service.modifierExpiration(id, body.dateExpiration());
+    }
+
+    public record ExpirationRequest(java.time.LocalDate dateExpiration) { }
+
     // NOUVEAU : suppression complete
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

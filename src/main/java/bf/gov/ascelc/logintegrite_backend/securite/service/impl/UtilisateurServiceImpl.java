@@ -12,13 +12,17 @@ import bf.gov.ascelc.logintegrite_backend.securite.mapper.RoleHabilitationMapper
 import bf.gov.ascelc.logintegrite_backend.securite.repository.RoleHabilitationRepository;
 import bf.gov.ascelc.logintegrite_backend.securite.repository.UtilisateurRepository;
 import bf.gov.ascelc.logintegrite_backend.securite.repository.UtilisateurRoleRepository;
+import bf.gov.ascelc.logintegrite_backend.securite.enums.CodeRole;
+import bf.gov.ascelc.logintegrite_backend.securite.service.ControleExpirationCompte;
 import bf.gov.ascelc.logintegrite_backend.securite.service.KeycloakAdminService;
+import bf.gov.ascelc.logintegrite_backend.securite.service.RegleExpiration;
 import bf.gov.ascelc.logintegrite_backend.securite.service.UtilisateurService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +39,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
     private final RoleHabilitationMapper roleHabilitationMapper;
     private final AuditService auditService;
     private final KeycloakAdminService keycloakAdmin;   // NOUVEAU
+    private final ControleExpirationCompte controleExpiration;
 
     @Override
     @Transactional(readOnly = true)
@@ -77,6 +82,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         utilisateur.setEmail(request.getEmail());
         utilisateur.setTelephone(request.getTelephone());
         utilisateur.setActif(true);
+        utilisateur.setDateExpiration(RegleExpiration.pourCreation(request.getRoleInitial(), request.getDateExpiration(), LocalDate.now()));
         utilisateur = utilisateurRepository.save(utilisateur);
 
         // Etape 3 : Attribuer le role en base
@@ -103,10 +109,40 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         keycloakAdmin.modifierActivation(utilisateur.getKeycloakId(), actif);
         utilisateur.setActif(actif);
         utilisateur = utilisateurRepository.save(utilisateur);
+        controleExpiration.invalider(utilisateur.getKeycloakId());
 
         auditService.enregistrer(actif ? "ACTIVATION_UTILISATEUR" : "DESACTIVATION_UTILISATEUR",
                 "Utilisateur", id, null, Map.of("actif", actif));
 
+        return versReponse(utilisateur);
+    }
+
+    /**
+     * Fixe, prolonge ou retire la date d'expiration. Prolonger un compte que l'expiration avait desactive le reactive.
+     */
+    @Override
+    public UtilisateurResponse modifierExpiration(UUID id, LocalDate dateExpiration) {
+        Utilisateur utilisateur = trouverOuLever(id);
+        List<UtilisateurRole> liens = utilisateurRoleRepository.findByUtilisateurId(id);
+        boolean consultationSeule = !liens.isEmpty() && liens.stream()
+                .allMatch(l -> l.getRoleHabilitation().getCode() == CodeRole.CONSULTANT);
+        LocalDate aujourdhui = LocalDate.now();
+        RegleExpiration.verifierModification(consultationSeule, dateExpiration, aujourdhui);
+
+        LocalDate ancienne = utilisateur.getDateExpiration();
+        boolean etaitExpire = ancienne != null && ancienne.isBefore(aujourdhui);
+        utilisateur.setDateExpiration(dateExpiration);
+        if (!utilisateur.isActif() && etaitExpire && dateExpiration != null) {
+            keycloakAdmin.modifierActivation(utilisateur.getKeycloakId(), true);
+            utilisateur.setActif(true);
+        }
+        utilisateur = utilisateurRepository.save(utilisateur);
+        controleExpiration.invalider(utilisateur.getKeycloakId());
+
+        Map<String, Object> apres = new java.util.HashMap<>();
+        apres.put("dateExpiration", dateExpiration == null ? "aucune" : dateExpiration.toString());
+        auditService.enregistrer("MODIFICATION_EXPIRATION_UTILISATEUR", "Utilisateur", id,
+                Map.of("dateExpiration", ancienne == null ? "aucune" : ancienne.toString()), apres);
         return versReponse(utilisateur);
     }
 
@@ -186,6 +222,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                 .prenom(u.getPrenom())
                 .email(u.getEmail())
                 .actif(u.isActif())
+                .dateExpiration(u.getDateExpiration())
                 .roles(roles)
                 .build();
     }

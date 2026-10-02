@@ -31,6 +31,9 @@ public class UtilisateurCreationRequest {
              message = "Le mot de passe doit contenir une majuscule, une minuscule et un chiffre")
     private String motDePasseTemporaire;
 
+    /** Facultative, sauf pour un compte de consultation (6 mois par defaut). */
+    private java.time.LocalDate dateExpiration;
+
     @NotNull(message = "Le role initial est obligatoire")
     private CodeRole roleInitial;
 }

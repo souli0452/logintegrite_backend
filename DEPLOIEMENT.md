@@ -169,5 +169,9 @@ utilisée : filtre `AccesConsultantFilter`, en liste blanche. Un compte qui cumu
 - **Traçabilité** : chaque recherche (critères et nombre de résultats), chaque fiche ouverte, chaque demande et chaque décision
   sont journalisés (onglet « Poste de travail » de l'audit et journal de consultation), avec l'adresse IP.
 
-Pas d'expiration automatique des comptes : pour un organisme extérieur, désactiver le compte (Gestion des utilisateurs) à la
-fin de la mission.
+**Expiration automatique des comptes** (migration V10) :
+- un compte de consultation a toujours une date d'expiration (6 mois proposés, modifiables) ; elle est facultative pour les autres rôles ;
+- le dernier jour d'accès est la date elle-même ; dès le lendemain, l'API refuse le compte (403 « Compte expiré »), même avec un jeton encore valide ;
+- une tâche horaire désactive ensuite le compte dans l'application et dans Keycloak, et le trace dans le journal de sécurité (« Compte désactivé (expiration) ») ;
+- prolonger (Gestion des utilisateurs, menu du compte, « Modifier l'expiration ») réactive un compte que l'expiration avait désactivé ;
+- l'état d'un compte est mémorisé 60 secondes côté serveur, et immédiatement invalidé par toute modification.

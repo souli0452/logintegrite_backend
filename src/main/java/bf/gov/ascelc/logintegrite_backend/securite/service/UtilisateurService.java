@@ -11,6 +11,7 @@ public interface UtilisateurService {
     UtilisateurResponse obtenir(UUID id);
     UtilisateurResponse creer(UtilisateurCreationRequest request);          
     UtilisateurResponse modifierActivation(UUID id, boolean actif);          
+    UtilisateurResponse modifierExpiration(UUID id, java.time.LocalDate dateExpiration);
     void supprimer(UUID id);                                                
     UtilisateurResponse attribuerRole(UUID utilisateurId, UUID roleHabilitationId);
     UtilisateurResponse retirerRole(UUID utilisateurId, UUID roleHabilitationId);

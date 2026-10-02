@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface UtilisateurRepository extends JpaRepository<Utilisateur, UUID> {
     Optional<Utilisateur> findByKeycloakId(String keycloakId);
     boolean existsByEmailIgnoreCase(String email);
+
+    java.util.List<Utilisateur> findByActifTrueAndDateExpirationBefore(java.time.LocalDate date);
 }
