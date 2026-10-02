@@ -96,7 +96,7 @@ public List<Map<String, Object>> historiqueStatutsJudiciaires(UUID personneId) {
         "       ja.valeur_avant AS \"valeurAvant\", " +
         "       ja.valeur_apres AS \"valeurApres\", " +
         "       ja.date_action AS \"dateAction\", " +
-        "       u.nom_complet AS \"utilisateur\" " +
+        "       u.prenom || ' ' || u.nom AS \"utilisateur\" " +
         "FROM audit.journal_audit ja " +
         "LEFT JOIN securite.utilisateur u ON u.id = ja.utilisateur_id " +
         "WHERE ( " +

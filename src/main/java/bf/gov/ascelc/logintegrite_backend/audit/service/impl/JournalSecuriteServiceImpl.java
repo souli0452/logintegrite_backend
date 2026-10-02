@@ -61,6 +61,27 @@ public class JournalSecuriteServiceImpl implements JournalSecuriteService {
     }
 
     @Override
+    @Transactional
+    public void enregistrerEvenementServeur(String type, String page, String detail) {
+        JournalSecurite e = new JournalSecurite();
+        e.setId(UUID.randomUUID());
+        e.setDateEvenement(Instant.now());
+        e.setUtilisateur(currentUserProvider.utilisateurCourant());
+        e.setTypeEvenement(type);
+        e.setPage(page);
+        e.setDetail(detail == null ? null : detail.substring(0, Math.min(500, detail.length())));
+        ClientIp.courante().ifPresent(e::setAdresseIp);
+        repository.save(e);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long compterDepuis(String type, Instant depuis) {
+        return repository.countByUtilisateurIdAndTypeEvenementAndDateEvenementAfter(
+                currentUserProvider.utilisateurCourant().getId(), type, depuis);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Page<EvenementSecuriteResponse> lister(String type, Pageable pageable) {
         Page<JournalSecurite> page = (type == null || type.isBlank())

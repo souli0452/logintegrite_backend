@@ -152,3 +152,22 @@ Limites à connaître : un navigateur ne peut pas empêcher une capture d'écran
 sur la dissuasion (filigrane au nom de l'utilisateur, masque quand la fenêtre perd le focus, copie et impression bloquées)
 et sur la traçabilité (journal des tentatives). Un blocage réel des captures sur téléphone demande une application native
 ou la gestion des appareils de l'organisation.
+
+## Comptes de consultation (organismes extérieurs et institution)
+
+Un compte avec le seul rôle `CONSULTANT` ne peut appeler QUE l'API de vérification (`/api/v1/verification/**`) et le
+signalement d'événements de son poste. Tout le reste de l'API lui est refusé côté serveur (403), quelle que soit l'interface
+utilisée : filtre `AccesConsultantFilter`, en liste blanche. Un compte qui cumule un autre rôle n'est pas concerné.
+
+- **Recherche d'une personne précise seulement** : numéro de pièce, RCCM, IFU, numéro de personne, ou nom + prénoms + date de
+  naissance. Pas de liste à parcourir. Cinq résultats au plus. Vingt recherches par dix minutes et par compte.
+- **Registre officiel seulement** : une personne seulement « en instruction » n'apparaît pas, et son existence n'est pas révélée.
+- **Fiche limitée** : dossiers entièrement validés, faits, statuts judiciaires (dont relaxes et acquittements) et peines.
+  Aucun document, pièce d'identité, adresse ni historique interne.
+- **Export sur demande** : le consultant dépose une demande motivée (écran « Mes demandes de dossier »). Un administrateur
+  l'accorde ou la refuse (menu Administration > Demandes de dossier). Les demandes ne sont jamais supprimées (migration V9).
+- **Traçabilité** : chaque recherche (critères et nombre de résultats), chaque fiche ouverte, chaque demande et chaque décision
+  sont journalisés (onglet « Poste de travail » de l'audit et journal de consultation), avec l'adresse IP.
+
+Pas d'expiration automatique des comptes : pour un organisme extérieur, désactiver le compte (Gestion des utilisateurs) à la
+fin de la mission.

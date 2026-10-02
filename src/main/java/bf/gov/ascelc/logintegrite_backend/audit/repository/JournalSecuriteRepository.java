@@ -18,4 +18,6 @@ public interface JournalSecuriteRepository extends JpaRepository<JournalSecurite
 
     /** Garde-fou contre l'inondation du journal par un poste (rafale de faux evenements). */
     long countByUtilisateurIdAndDateEvenementAfter(UUID utilisateurId, Instant depuis);
+
+    long countByUtilisateurIdAndTypeEvenementAndDateEvenementAfter(UUID utilisateurId, String type, Instant depuis);
 }

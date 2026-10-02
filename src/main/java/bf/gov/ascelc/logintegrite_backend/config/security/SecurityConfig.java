@@ -72,7 +72,9 @@ public class SecurityConfig {
             )
             // Provisionne le compte local et reporte ses roles des la premiere requete (une fois par utilisateur).
             .addFilterAfter(new SynchronisationUtilisateurFilter(currentUserProvider, synchroniseurRoles),
-                    BearerTokenAuthenticationFilter.class);
+                    BearerTokenAuthenticationFilter.class)
+            // Compte de consultation seule : liste blanche d'appels (voir AccesConsultantFilter).
+            .addFilterAfter(new AccesConsultantFilter(), SynchronisationUtilisateurFilter.class);
         return http.build();
     }
 
