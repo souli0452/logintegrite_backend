@@ -52,6 +52,11 @@ public class DossierController {
         return service.modifier(id, request);
     }
 
+    /** Cloture un dossier ouvert (il devient non modifiable). Refuse tant qu'un fait attend une validation. */
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    @PatchMapping("/{id}/cloturer")
+    public DossierResponse cloturer(@PathVariable UUID id) { return service.cloturer(id); }
+
     @Operation(
         summary = "Ouvrir un dossier complet en une seule requete",
         description = "Cree en une transaction : Personne (existante OU nouvelle physique OU nouvelle morale), " +

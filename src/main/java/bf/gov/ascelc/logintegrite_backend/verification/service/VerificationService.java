@@ -75,8 +75,9 @@ public class VerificationService {
         StringBuilder where = new StringBuilder(" where " + DANS_LE_REGISTRE);
         List<Object> args = new ArrayList<>();
         if (rempli(c.numeroPiece())) {
-            where.append(" and exists (select 1 from personnes.piece_identite pi where pi.personne_physique_id = p.id"
-                    + " and lower(trim(pi.numero)) = lower(trim(?)))");
+            where.append(" and (exists (select 1 from personnes.piece_identite pi where pi.personne_physique_id = p.id"
+                    + " and lower(trim(pi.numero)) = lower(trim(?))) or upper(pp.nip) = upper(trim(?)))");
+            args.add(c.numeroPiece());
             args.add(c.numeroPiece());
         }
         if (rempli(c.rccm())) {

@@ -24,6 +24,7 @@ import bf.gov.ascelc.logintegrite_backend.referentiel.entity.StatutJudiciaire; /
 import bf.gov.ascelc.logintegrite_backend.referentiel.repository.StatutJudiciaireRepository; // AJOUT
 import bf.gov.ascelc.logintegrite_backend.referentiel.repository.TypeInfractionRepository;
 import bf.gov.ascelc.logintegrite_backend.referentiel.repository.ZoneGeographiqueRepository;
+import bf.gov.ascelc.logintegrite_backend.dossier.service.RegleDossier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -67,6 +68,8 @@ public class FaitReprocheServiceImpl implements FaitReprocheService {
     public FaitReprocheResponse creer(UUID dossierId, FaitReprocheRequest request) {
         Dossier dossier = dossierRepository.findById(dossierId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dossier", dossierId));
+
+        RegleDossier.verifierOuvert(dossier);
 
         FaitReproche entite = mapper.toEntity(request);
         entite.setDossier(dossier);

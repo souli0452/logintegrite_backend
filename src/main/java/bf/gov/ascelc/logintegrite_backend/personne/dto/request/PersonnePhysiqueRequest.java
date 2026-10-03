@@ -5,6 +5,7 @@ import bf.gov.ascelc.logintegrite_backend.personne.enums.SituationMatrimoniale;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,6 +18,10 @@ public class PersonnePhysiqueRequest {
 
     @NotBlank(message = "Le nom de naissance est obligatoire")
     private String nomNaissance;
+
+    /** Facultatif ; 17 caracteres alphanumeriques (espaces et minuscules tolerés, normalisés par le serveur). */
+    @Pattern(regexp = "^\\s*([A-Za-z0-9]\\s*){17}$|^\\s*$", message = "Le NIP doit comporter 17 caracteres (chiffres et lettres)")
+    private String nip;
 
     private String nomUsage;
 

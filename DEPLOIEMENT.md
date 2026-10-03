@@ -175,3 +175,15 @@ utilisée : filtre `AccesConsultantFilter`, en liste blanche. Un compte qui cumu
 - une tâche horaire désactive ensuite le compte dans l'application et dans Keycloak, et le trace dans le journal de sécurité (« Compte désactivé (expiration) ») ;
 - prolonger (Gestion des utilisateurs, menu du compte, « Modifier l'expiration ») réactive un compte que l'expiration avait désactivé ;
 - l'état d'un compte est mémorisé 60 secondes côté serveur, et immédiatement invalidé par toute modification.
+
+## NIP, clôture et retrait d'une personne d'un dossier (migration V11)
+
+- **NIP** : 17 caractères (chiffres et lettres majuscules), unique par personne physique, facultatif. Le serveur le normalise
+  (espaces retirés, majuscules), refuse un doublon (409, en nommant la personne qui le porte) et propose un contrôle en direct
+  (`GET /api/v1/personnes/physiques/verifier-nip`). Il se retrouve par la recherche avancée et par la vérification (comme un
+  numéro de pièce d'identité). La fiche de consultation ne l'affiche pas.
+- **Clôture** (`PATCH /api/v1/dossiers/{id}/cloturer`, agent ou administrateur) : refusée tant qu'un fait attend une validation.
+  Un dossier clôturé n'accepte plus de modification, de nouvelle personne, de nouveau fait ni de nouveau document ; les statuts
+  judiciaires et les peines restent enregistrables. Un dossier ne se supprime pas.
+- **Retrait d'une personne** (`DELETE /api/v1/dossiers/{id}/implications/{implicationId}`, agent ou administrateur) : dossier
+  ouvert, aucun fait validé ni peine pour cette personne ; sinon 409 avec la raison.

@@ -6,6 +6,10 @@ import bf.gov.ascelc.logintegrite_backend.common.exception.ResourceNotFoundExcep
 import bf.gov.ascelc.logintegrite_backend.common.security.CurrentUserProvider;
 import bf.gov.ascelc.logintegrite_backend.personne.dto.request.PersonnePhysiqueRequest;
 import bf.gov.ascelc.logintegrite_backend.personne.dto.response.PersonnePhysiqueResponse;
+import bf.gov.ascelc.logintegrite_backend.personne.dto.response.VerificationNipResponse;
+import bf.gov.ascelc.logintegrite_backend.personne.util.NipUtil;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import bf.gov.ascelc.logintegrite_backend.personne.entity.PersonnePhysique;
 import bf.gov.ascelc.logintegrite_backend.personne.mapper.PersonnePhysiqueMapper;
 import bf.gov.ascelc.logintegrite_backend.personne.repository.PersonnePhysiqueRepository;
@@ -50,6 +54,7 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
     @Override
     public PersonnePhysiqueResponse creer(PersonnePhysiqueRequest request) {
         PersonnePhysique entite = mapper.toEntity(request);
+        entite.setNip(nipLibre(request.getNip(), null));
         entite.setCreePar(currentUserProvider.utilisateurCourant());
 
         // Résolution de la relation Nationalite
@@ -79,6 +84,10 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
                 "telephone", String.valueOf(entite.getTelephone()));
 
         mapper.updateEntityFromRequest(request, entite);
+        // Le NIP n'est modifie que s'il est fourni : un champ vide ne l'efface pas.
+        if (NipUtil.normaliser(request.getNip()) != null) {
+            entite.setNip(nipLibre(request.getNip(), id));
+        }
 
         // Résolution de la relation Nationalite
         if (request.getNationaliteId() != null) {
@@ -104,6 +113,33 @@ public class PersonnePhysiqueServiceImpl implements PersonnePhysiqueService {
         auditService.enregistrer("SUPPRESSION", "PersonnePhysique", id,
                 Map.of("nomAffichage", entite.getNomAffichage()), null);
         repository.delete(entite);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VerificationNipResponse verifierNip(String nip, UUID exclureId) {
+        String net = NipUtil.normaliser(nip);
+        if (!NipUtil.estValide(net)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le NIP doit comporter 17 caracteres (chiffres et lettres).");
+        }
+        return repository.findByNip(net)
+                .filter(p -> !p.getId().equals(exclureId))
+                .map(p -> VerificationNipResponse.dejaPris(p.getId(), p.getNomAffichage(), "PHYSIQUE"))
+                .orElseGet(VerificationNipResponse::libre);
+    }
+
+    /** Normalise le NIP et refuse un doublon : deux personnes ne peuvent pas porter le meme NIP. */
+    private String nipLibre(String brut, UUID exclureId) {
+        String net = NipUtil.normaliser(brut);
+        if (net == null) return null;
+        if (!NipUtil.estValide(net)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le NIP doit comporter 17 caracteres (chiffres et lettres).");
+        }
+        repository.findByNip(net).filter(p -> !p.getId().equals(exclureId)).ifPresent(p -> {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ce NIP est deja enregistre pour " + p.getNomAffichage() + " (" + p.getNumeroPersonne() + ").");
+        });
+        return net;
     }
 
     private PersonnePhysique trouverOuLever(UUID id) {

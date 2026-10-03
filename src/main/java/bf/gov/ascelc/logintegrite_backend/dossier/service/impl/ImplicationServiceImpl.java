@@ -16,7 +16,11 @@ import bf.gov.ascelc.logintegrite_backend.personne.repository.PersonneRepository
 import bf.gov.ascelc.logintegrite_backend.referentiel.repository.EntiteOrganisationRepository;
 import bf.gov.ascelc.logintegrite_backend.referentiel.repository.RoleImplicationRepository;
 import bf.gov.ascelc.logintegrite_backend.referentiel.repository.StatutJudiciaireRepository;
+import bf.gov.ascelc.logintegrite_backend.dossier.service.RegleDossier;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +41,7 @@ public class ImplicationServiceImpl implements ImplicationService {
     private final StatutJudiciaireRepository statutJudiciaireRepository;
     private final ImplicationMapper mapper;
     private final AuditService auditService;
+    private final JdbcTemplate jdbc;
 
     @Override
     @Transactional(readOnly = true)
@@ -45,9 +50,45 @@ public class ImplicationServiceImpl implements ImplicationService {
     }
 
     @Override
+    public void supprimer(UUID dossierId, UUID implicationId) {
+        Implication implication = repository.findById(implicationId)
+                .filter(i -> i.getDossier().getId().equals(dossierId))
+                .orElseThrow(() -> new ResourceNotFoundException("Implication", implicationId));
+
+        RegleDossier.verifierOuvert(implication.getDossier());
+        Integer faitsValides = jdbc.queryForObject("""
+                select count(*) from dossiers.implication_fait imf
+                join dossiers.fait_reproche fr on fr.id = imf.fait_reproche_id
+                where imf.implication_id = ? and fr.statut_validation = 'VALIDEE'""", Integer.class, implicationId);
+        Integer peines = jdbc.queryForObject("""
+                select count(*) from dossiers.peine pe
+                join dossiers.implication_fait imf on imf.id = pe.implication_fait_id
+                where imf.implication_id = ?""", Integer.class, implicationId);
+        if ((faitsValides != null && faitsValides > 0) || (peines != null && peines > 0)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cette personne est liee a des faits valides ou a des peines : elle ne peut plus etre retiree du dossier.");
+        }
+
+        Map<String, Object> avant = Map.of(
+                "dossierId", dossierId.toString(),
+                "personneId", implication.getPersonne().getId().toString(),
+                "role", String.valueOf(implication.getRoleImplication().getLibelle()));
+
+        // liens de documents et liaisons aux faits (non valides) de cette implication, puis l'implication elle-meme
+        jdbc.update("delete from documents.document_implication where implication_id = ?", implicationId);
+        jdbc.update("delete from dossiers.implication_fait where implication_id = ?", implicationId);
+        repository.delete(implication);
+        repository.flush();
+
+        auditService.enregistrer("SUPPRESSION", "Implication", implicationId, avant, null);
+    }
+
+    @Override
     public ImplicationResponse creer(UUID dossierId, ImplicationRequest request) {
         Dossier dossier = dossierRepository.findById(dossierId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dossier", dossierId));
+
+        RegleDossier.verifierOuvert(dossier);
 
         Personne personne = personneRepository.findById(request.getPersonneId())
                 .orElseThrow(() -> new ResourceNotFoundException("Personne", request.getPersonneId()));

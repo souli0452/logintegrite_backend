@@ -9,6 +9,11 @@ import bf.gov.ascelc.logintegrite_backend.dossier.dto.response.DossierResponse;
 import bf.gov.ascelc.logintegrite_backend.common.util.RechercheTexte;
 import bf.gov.ascelc.logintegrite_backend.dossier.entity.Dossier;
 import bf.gov.ascelc.logintegrite_backend.dossier.enums.StatutDossier;
+import bf.gov.ascelc.logintegrite_backend.dossier.enums.StatutValidation;
+import bf.gov.ascelc.logintegrite_backend.dossier.repository.FaitReprocheRepository;
+import bf.gov.ascelc.logintegrite_backend.dossier.service.RegleDossier;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import bf.gov.ascelc.logintegrite_backend.dossier.mapper.DossierMapper;
 import bf.gov.ascelc.logintegrite_backend.dossier.repository.DossierRepository;
 import bf.gov.ascelc.logintegrite_backend.dossier.service.DossierService;
@@ -32,6 +37,7 @@ public class DossierServiceImpl implements DossierService {
     private final DossierMapper mapper;
     private final AuditService auditService;
     private final ConsultationService consultationService;
+    private final FaitReprocheRepository faitReprocheRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -65,6 +71,7 @@ public class DossierServiceImpl implements DossierService {
     @Override
     public DossierResponse modifier(UUID id, DossierRequest request) {
         Dossier entite = trouverOuLever(id);
+        RegleDossier.verifierOuvert(entite);
         Map<String, Object> avant = Map.of(
                 "intitule", String.valueOf(entite.getIntitule()),
                 "statutDossier", entite.getStatutDossier().name());
@@ -78,6 +85,27 @@ public class DossierServiceImpl implements DossierService {
                 Map.of("intitule", String.valueOf(sauvegarde.getIntitule()),
                        "statutDossier", sauvegarde.getStatutDossier().name()));
 
+        return mapper.toResponse(sauvegarde);
+    }
+
+    @Override
+    public DossierResponse cloturer(UUID id) {
+        Dossier entite = trouverOuLever(id);
+        RegleDossier.verifierOuvert(entite);
+        long enAttente = faitReprocheRepository.findByDossierId(id).stream()
+                .filter(f -> f.getStatutValidation() == StatutValidation.EN_ATTENTE).count();
+        if (enAttente > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    enAttente + (enAttente > 1 ? " faits attendent" : " fait attend")
+                            + " encore une validation : le dossier ne peut pas etre cloture.");
+        }
+        entite.setStatutDossier(StatutDossier.CLOTURE);
+        entite.setDateCloture(java.time.LocalDate.now());
+        Dossier sauvegarde = repository.save(entite);
+
+        auditService.enregistrer("CLOTURE", "Dossier", id,
+                Map.of("statutDossier", StatutDossier.OUVERT.name()),
+                Map.of("statutDossier", StatutDossier.CLOTURE.name(), "dateCloture", sauvegarde.getDateCloture().toString()));
         return mapper.toResponse(sauvegarde);
     }
 

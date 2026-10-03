@@ -250,7 +250,7 @@ Vérifiez les migrations de base de données :
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.prod logs backend | grep -i "now at version"
 ```
-Vous devez voir `now at version v10` (ou la dernière version de votre dépôt).
+Vous devez voir `now at version v11` (ou la dernière version de votre dépôt).
 
 ### Ce qui se passe au premier démarrage
 1. PostgreSQL crée les quatre rôles à moindre privilège (script `docker/postgres/init-prod.sh`).
@@ -268,6 +268,7 @@ Vous devez voir `now at version v10` (ou la dernière version de votre dépôt).
 | V8 | Journal des événements du poste (copie, impression, capture) |
 | V9 | Demandes d'export de dossier |
 | V10 | Date d'expiration des comptes |
+| V11 | NIP des personnes physiques (unique, 17 caractères) |
 
 ---
 

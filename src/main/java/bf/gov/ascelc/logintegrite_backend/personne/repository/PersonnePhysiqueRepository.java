@@ -8,4 +8,6 @@ import java.util.UUID;
 
 @Repository
 public interface PersonnePhysiqueRepository extends JpaRepository<PersonnePhysique, UUID> {
+
+    java.util.Optional<PersonnePhysique> findByNip(String nip);
 }

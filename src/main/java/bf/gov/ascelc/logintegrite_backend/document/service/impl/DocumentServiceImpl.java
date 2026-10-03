@@ -64,6 +64,8 @@ public class DocumentServiceImpl implements DocumentService {
         Dossier dossier = dossierRepository.findById(dossierId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dossier", dossierId));
 
+        bf.gov.ascelc.logintegrite_backend.dossier.service.RegleDossier.verifierOuvert(dossier);
+
         MultipartFile fichier = request.getFichier();
         FichierValidator.FichierValide valide = fichierValidator.valider(fichier);
         String nomStockage = UUID.randomUUID() + "." + valide.extension();

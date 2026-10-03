@@ -65,6 +65,10 @@ public class PersonnePhysique extends Personne {
     @Column(name = "grade_categorie")
     private String gradeCategorie;
 
+    /** NIP : 17 caracteres (chiffres et lettres majuscules), unique, facultatif. */
+    @Column(name = "nip", length = 17)
+    private String nip;
+
     @Column(name = "adresse")
     private String adresse;
 

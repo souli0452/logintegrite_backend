@@ -3,6 +3,7 @@ package bf.gov.ascelc.logintegrite_backend.personne.controller;
 
 import bf.gov.ascelc.logintegrite_backend.personne.dto.request.PersonnePhysiqueRequest;
 import bf.gov.ascelc.logintegrite_backend.personne.dto.response.PersonnePhysiqueResponse;
+import bf.gov.ascelc.logintegrite_backend.personne.dto.response.VerificationNipResponse;
 import bf.gov.ascelc.logintegrite_backend.personne.service.PersonnePhysiqueService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,13 @@ public class PersonnePhysiqueController {
 
     @GetMapping
     public Page<PersonnePhysiqueResponse> lister(Pageable pageable) { return service.lister(pageable); }
+
+    /** Controle en direct du NIP saisi a la creation ou a la modification d'une personne. */
+    @PreAuthorize("hasAnyRole('AGENT','VALIDATEUR','ADMIN')")
+    @GetMapping("/verifier-nip")
+    public VerificationNipResponse verifierNip(@RequestParam String nip, @RequestParam(required = false) UUID exclureId) {
+        return service.verifierNip(nip, exclureId);
+    }
 
     @GetMapping("/{id}")
     public PersonnePhysiqueResponse obtenir(@PathVariable UUID id) { return service.obtenir(id); }

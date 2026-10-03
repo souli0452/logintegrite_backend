@@ -10,4 +10,10 @@ import java.util.UUID;
 public interface ImplicationService {
     List<ImplicationResponse> listerParDossier(UUID dossierId);
     ImplicationResponse creer(UUID dossierId, ImplicationRequest request);
+
+    /**
+     * Retire une personne d'un dossier OUVERT, tant qu'aucun fait qui la concerne n'est valide et qu'aucune peine
+     * n'est enregistree : une implication deja validee fait partie du registre et ne se supprime plus.
+     */
+    void supprimer(UUID dossierId, UUID implicationId);
 }

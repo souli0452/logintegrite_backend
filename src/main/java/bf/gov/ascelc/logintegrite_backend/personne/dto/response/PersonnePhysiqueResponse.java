@@ -18,6 +18,7 @@ public class PersonnePhysiqueResponse {
     private String numeroPersonne;
     private String nomAffichage;
     private String nomNaissance;
+    private String nip;
     private String nomUsage;
     private String prenoms;
     private Sexe sexe;

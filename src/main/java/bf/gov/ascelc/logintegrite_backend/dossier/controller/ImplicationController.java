@@ -25,6 +25,14 @@ public class ImplicationController {
         return service.listerParDossier(dossierId);
     }
     
+    /** Retire une personne d'un dossier ouvert (voir la regle dans ImplicationService). */
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    @DeleteMapping("/{implicationId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void supprimer(@PathVariable UUID dossierId, @PathVariable UUID implicationId) {
+        service.supprimer(dossierId, implicationId);
+    }
+
     @PreAuthorize("hasAnyRole('AGENT','VALIDATEUR','ADMIN')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

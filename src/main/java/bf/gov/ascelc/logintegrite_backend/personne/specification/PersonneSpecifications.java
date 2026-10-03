@@ -53,9 +53,11 @@ public final class PersonneSpecifications {
         return (root, query, cb) -> {
             if (numero == null || numero.isBlank()) return cb.conjunction();
             Root<PersonnePhysique> physique = cb.treat(root, PersonnePhysique.class);
-            Join<PersonnePhysique, PieceIdentite> pieces = physique.join("piecesIdentite");
+            Join<PersonnePhysique, PieceIdentite> pieces = physique.join("piecesIdentite", jakarta.persistence.criteria.JoinType.LEFT);
             query.distinct(true);
-            return cb.equal(pieces.get("numero"), numero);
+            // le NIP est aussi un numero d'identification : on le retrouve par la meme recherche
+            return cb.or(cb.equal(pieces.get("numero"), numero),
+                    cb.equal(physique.get("nip"), numero.trim().toUpperCase(java.util.Locale.ROOT)));
         };
     }
 
