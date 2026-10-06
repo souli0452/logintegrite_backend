@@ -60,6 +60,23 @@ class EtatTrimestrielServiceTest {
     }
 
     @Test
+    void troisRegenerationsAuMaximumParTrimestre() {
+        when(rapports.lireRegistre()).thenReturn(List.of());
+        when(repo.compterVersions(T3)).thenReturn(4); // 1 generation initiale + 3 regenerations
+        assertThatThrownBy(() -> service.generer(T3, "Admin", LocalDate.of(2026, 10, 6)))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("T3 2026");
+        verify(repo, never()).archiver(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void laTroisiemeRegenerationEstAcceptee() {
+        when(rapports.lireRegistre()).thenReturn(List.of());
+        when(repo.compterVersions(T3)).thenReturn(3);
+        service.generer(T3, "Admin", LocalDate.of(2026, 10, 6));
+        verify(repo).archiver(eq(T3), eq("Admin"), any(), any(), any(), anyString(), anyString());
+    }
+
+    @Test
     void genererSiManquantEstIdempotent() {
         when(repo.existeActif(T3)).thenReturn(true);
         assertThat(service.genererSiManquant(LocalDate.of(2026, 10, 6))).isFalse();

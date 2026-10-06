@@ -31,6 +31,14 @@ public class EtatTrimestrielRepository {
         return n != null && n > 0;
     }
 
+    /** Nombre d'etats archives pour ce trimestre, remplaces compris. */
+    public int compterVersions(PeriodeTrimestre p) {
+        Integer n = jdbc.queryForObject(
+                "select count(*) from audit.etat_trimestriel where annee = ? and trimestre = ?",
+                Integer.class, p.annee(), p.trimestre());
+        return n == null ? 0 : n;
+    }
+
     /** Identifiants du registre au dernier etat actif strictement anterieur a la periode ; null s'il n'y en a pas. */
     public Set<UUID> idsDernierEtatAvant(PeriodeTrimestre p) {
         List<Set<UUID>> r = jdbc.query(

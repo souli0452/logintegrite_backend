@@ -22,8 +22,15 @@ public class EtatTrimestrielService {
     private final RapportService rapports;
     private final EtatTrimestrielRepository repository;
 
+    /** Une generation initiale + 3 regenerations au plus par trimestre : l'archive ne gonfle pas indefiniment. */
+    static final int MAX_VERSIONS_PAR_TRIMESTRE = 4;
+
     /** Genere et archive l'etat d'un trimestre ; rien n'est archive si une etape echoue. */
     public void generer(PeriodeTrimestre periode, String generePar, LocalDate aujourdhui) {
+        if (repository.compterVersions(periode) >= MAX_VERSIONS_PAR_TRIMESTRE) {
+            throw new IllegalArgumentException("L'etat " + periode.libelle()
+                    + " a deja ete regenere 3 fois : limite atteinte.");
+        }
         List<LigneRegistre> lignes = rapports.lireRegistre();
         Set<UUID> precedents = repository.idsDernierEtatAvant(periode);
         SyntheseTrimestre synthese = SyntheseTrimestre.calculer(precedents, lignes,
