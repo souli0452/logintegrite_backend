@@ -101,20 +101,7 @@ public class RapportServiceImpl implements RapportService {
     // -------------------------------------------------------------------------
     @Override
     public byte[] genererPdfRegistreOfficiel() {
-        PersonneSearchCriteria criteres = new PersonneSearchCriteria();
-        criteres.setStatutAncrage(StatutAncrage.REGISTRE_OFFICIEL);
-
-        // Nombre de dossiers entierement valides par personne, pour toutes les personnes, en une requete.
-        Map<UUID, Long> dossiersValides = compterParCle(
-                implicationRepository.compterDossiersEntierementValidesParPersonne(StatutValidation.VALIDEE));
-
-        List<LigneRegistre> lignes = new ArrayList<>();
-        lirePersonnes(criteres, p -> {
-            Long nb = dossiersValides.get(p.getId());
-            if (nb != null && nb > 0) {
-                lignes.add(new LigneRegistre(p.getNomAffichage(), p.getTypePersonne().name(), nb));
-            }
-        });
+        List<LigneRegistre> lignes = lireRegistre();
 
         try (PDDocument document = new PDDocument();
              PdfEcriture pdf = new PdfEcriture(document, "Registre officiel ASCE-LC")) {
@@ -136,6 +123,25 @@ public class RapportServiceImpl implements RapportService {
         } catch (IOException e) {
             throw new UncheckedIOException("Echec de la generation du PDF Registre", e);
         }
+    }
+
+    @Override
+    public List<LigneRegistre> lireRegistre() {
+        PersonneSearchCriteria criteres = new PersonneSearchCriteria();
+        criteres.setStatutAncrage(StatutAncrage.REGISTRE_OFFICIEL);
+
+        // Nombre de dossiers entierement valides par personne, pour toutes les personnes, en une requete.
+        Map<UUID, Long> dossiersValides = compterParCle(
+                implicationRepository.compterDossiersEntierementValidesParPersonne(StatutValidation.VALIDEE));
+
+        List<LigneRegistre> lignes = new ArrayList<>();
+        lirePersonnes(criteres, p -> {
+            Long nb = dossiersValides.get(p.getId());
+            if (nb != null && nb > 0) {
+                lignes.add(new LigneRegistre(p.getId(), p.getNomAffichage(), p.getTypePersonne().name(), nb));
+            }
+        });
+        return lignes;
     }
 
     // -------------------------------------------------------------------------
@@ -205,8 +211,6 @@ public class RapportServiceImpl implements RapportService {
     // -------------------------------------------------------------------------
     // Utilitaires
     // -------------------------------------------------------------------------
-    private record LigneRegistre(String nom, String type, long dossiers) { }
-
     /** Parcourt les personnes correspondant aux criteres, par pages, sans jamais tout charger en memoire. */
     private void lirePersonnes(PersonneSearchCriteria criteres, java.util.function.Consumer<Personne> action) {
         int page = 0;
