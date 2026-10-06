@@ -17,7 +17,7 @@ import java.util.List;
  * des caracteres que les polices standard ne savent pas afficher (qui feraient echouer PDFBox).
  * Un rapport n'est jamais tronque : quand la page est pleine, une nouvelle page est ouverte.
  */
-final class PdfEcriture implements AutoCloseable {
+public final class PdfEcriture implements AutoCloseable {
 
     private static final float MARGE = 50f;
     private static final float HAUT = 790f;
@@ -34,7 +34,7 @@ final class PdfEcriture implements AutoCloseable {
     private float y;
     private int pages;
 
-    PdfEcriture(PDDocument document, String enTete) throws IOException {
+    public PdfEcriture(PDDocument document, String enTete) throws IOException {
         this.document = document;
         this.enTete = enTete;
         nouvellePage();
@@ -44,30 +44,30 @@ final class PdfEcriture implements AutoCloseable {
         return pages;
     }
 
-    void titre(String texte) throws IOException {
+    public void titre(String texte) throws IOException {
         ecrire(texte, grasse, 16, 26);
     }
 
-    void ligne(String texte) throws IOException {
+    public void ligne(String texte) throws IOException {
         ecrire(texte, normale, 11, 16);
     }
 
-    void ligneGrasse(String texte) throws IOException {
+    public void ligneGrasse(String texte) throws IOException {
         ecrire(texte, grasse, 11, 16);
     }
 
     /** Ligne a chasse fixe : colonnes alignees pour les tableaux. */
-    void ligneTableau(String texte) throws IOException {
+    public void ligneTableau(String texte) throws IOException {
         ecrire(texte, monospace, 9, 13);
     }
 
-    void espace(float hauteur) throws IOException {
+    public void espace(float hauteur) throws IOException {
         y -= hauteur;
         if (y < BAS) nouvellePage();
     }
 
     /** Ajoute "Page i / n" en pied de chaque page puis ferme le flux courant. */
-    void terminer() throws IOException {
+    public void terminer() throws IOException {
         flux.close();
         flux = null;
         int total = document.getNumberOfPages();
