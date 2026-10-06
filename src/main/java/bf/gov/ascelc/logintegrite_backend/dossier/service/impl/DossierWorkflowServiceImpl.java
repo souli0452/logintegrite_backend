@@ -250,10 +250,14 @@ public class DossierWorkflowServiceImpl implements DossierWorkflowService {
         if (implication.getStatutJudiciaire() != null) {
             return implication.getStatutJudiciaire();
         }
-        return statutJudiciaireRepository.findByLibelleIgnoreCase("En instruction")
+        // Premiere etape d'une procedure. Le statut est aussi porte par l'implication, pour que la fiche de la
+        // personne et la fiche de verification affichent la meme situation.
+        StatutJudiciaire initial = statutJudiciaireRepository.findByLibelleIgnoreCase("Enquête préliminaire")
                 .or(() -> statutJudiciaireRepository.findAll().stream().findFirst())
                 .orElseThrow(() -> new IllegalStateException(
                         "Aucun statut judiciaire dans referentiels.statut_judiciaire — peupler la table"));
+        implication.setStatutJudiciaire(initial);
+        return initial;
     }
 
     private ImplicationFait creerLiaisonImplicationFait(Implication implication, FaitReproche fait) {

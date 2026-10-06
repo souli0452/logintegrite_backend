@@ -223,6 +223,7 @@ public class FaitReprocheServiceImpl implements FaitReprocheService {
         FaitReproche fait = repository.findById(faitId)
                 .orElseThrow(() -> new ResourceNotFoundException("FaitReproche", faitId));
 
+        RegleDossier.verifierOuvert(fait.getDossier());
         if (fait.getStatutValidation() != StatutValidation.REJETEE) {
             throw new IllegalStateException("Seuls les faits rejetes peuvent etre repris en edition");
         }
@@ -295,9 +296,13 @@ public class FaitReprocheServiceImpl implements FaitReprocheService {
         if (implication.getStatutJudiciaire() != null) {
             return implication.getStatutJudiciaire();
         }
-        return statutJudiciaireRepository.findByLibelleIgnoreCase("En instruction")
+        // Premiere etape d'une procedure. Le statut est aussi porte par l'implication, pour que la fiche de la
+        // personne et la fiche de verification affichent la meme situation.
+        StatutJudiciaire initial = statutJudiciaireRepository.findByLibelleIgnoreCase("Enquête préliminaire")
                 .or(() -> statutJudiciaireRepository.findAll().stream().findFirst())
                 .orElseThrow(() -> new IllegalStateException(
                         "Aucun statut judiciaire dans referentiels.statut_judiciaire"));
+        implication.setStatutJudiciaire(initial);
+        return initial;
     }
 }
