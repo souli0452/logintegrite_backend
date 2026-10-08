@@ -93,6 +93,12 @@ services:
       # Substitues dans le realm a l'import
       APP_URL: https://${DOMAIN}
       KC_ADMIN_API_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET manquant}
+      # Messagerie (mot de passe oublie) : lues par scripts/keycloak-smtp.sh, qui les applique au realm.
+      SMTP_HOST: ${SMTP_HOST:-mailer.gov.bf}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-logintegrite@asce-lc.bf}
+      SMTP_FROM: ${SMTP_FROM:-logintegrite@asce-lc.bf}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     volumes:
       - ./docker/keycloak/import-prod:/opt/keycloak/data/import:ro
       - ./docker/keycloak/themes/asce-lc:/opt/keycloak/themes/asce-lc:ro
